@@ -13,7 +13,7 @@
 #   2. creates the game repo skeleton: CMakeLists.txt (project <name>: add_subdirectory(engine), game/*.cpp, link rapture),
 #      build.bat / re.bat / .gitignore / .gitattributes (copied from the reference game repo, names adapted), game/main.cpp,
 #      game/HostConfig<Name>.{h,cpp} (every field of rapture::HostConfig with the values to fill in: see docs/REUSE.md sec. 1.3),
-#      game/Strings.inc (the host exe's string table, via engine/tools/extract_host_strings.py when python + pefile are there);
+#      game/Strings.inc (the host exe's string table, via engine/tools/extract_host_strings.py when python is there);
 #   3. the engine: `git submodule add <EngineUrl> engine` (-EngineUrl), or a plain COPY of the reference engine folder (-CopyEngine);
 #   4. re/game.cfg (+ re.bat wrapper: the Ghidra scripts, the engine's notes/names/decompilation are in the submodule, engine-re/re/),
 #      re/lib_start.tsv, re/notes skeletons + the reference game's notes; CLAUDE.md, docs/NOTES.md;   (-NoEngineRe is obsolete and ignored)
@@ -133,6 +133,10 @@ else()
     target_compile_options(@@LOWER@@ PRIVATE -Wall -Wextra -Wno-unused-parameter)
 endif()
 
+# Icon + version info + manifest (uncomment; the icon is read at configure time from the user's own host exe, see engine/cmake/RaptureWin32Resources.cmake):
+# rapture_add_win32_resources(@@LOWER@@ ICON_FROM "${GAME_DATA}/<Host>.exe" VERSION 1.0.0 PRODUCT "<Title> (unofficial port)"
+#     DESCRIPTION "<Title> - unofficial SDL2 port" INTERNAL_NAME "<Title>" FILENAME "@@LOWER@@.exe")
+
 rapture_copy_sdl2_dll(@@LOWER@@)
 '@.Replace('@@PASCAL@@', $Pascal).Replace('@@LOWER@@', $Lower))
 
@@ -230,8 +234,8 @@ if (-not $DryRun) {
         $genOk = ($LASTEXITCODE -eq 0) -and (Test-Path $stringsOut)
     }
     if (-not $genOk) {
-        [IO.File]::WriteAllText($stringsOut, "// TODO: python -I engine/tools/extract_host_strings.py `"../$exe`" game/Strings.inc  (needs python + pefile)`n{0, `"`"},`n", $enc)
-        Write-Warning 'game/Strings.inc is empty: generate it with engine/tools/extract_host_strings.py (python + pefile).'
+        [IO.File]::WriteAllText($stringsOut, "// TODO: python -I engine/tools/extract_host_strings.py `"../$exe`" game/Strings.inc`n{0, `"`"},`n", $enc)
+        Write-Warning 'game/Strings.inc is empty: generate it with engine/tools/extract_host_strings.py (python).'
     }
 }
 

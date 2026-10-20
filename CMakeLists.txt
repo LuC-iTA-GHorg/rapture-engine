@@ -80,6 +80,9 @@ else()
     target_compile_options(rapture PRIVATE -Wall -Wextra -Wno-unused-parameter)
 endif()
 
+# rapture_add_win32_resources(): icon (extracted at configure time from the user's own original exe), version info, manifest.
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/RaptureWin32Resources.cmake)
+
 # Helper for the executables of a game (and of the standalone test build): copy SDL2.dll next to the exe on Windows.
 function(rapture_copy_sdl2_dll target)
     if(WIN32)

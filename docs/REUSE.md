@@ -199,11 +199,27 @@ To be run **only by the user** (or with their explicit consent) on the real game
 
 1. checks that `moses.dll`/`Aaron.dll` are identical (SHA-256) to the MuShoot ones; detects the host exe and scene DLL;
 2. `CMakeLists.txt` (`add_subdirectory(engine)` + `game/**.cpp`), `build.bat`, `re.bat` (wrapper), `.gitignore`, `.gitattributes`, `game/main.cpp`, `game/HostConfig<Game>.{h,cpp}` (to be filled in), `game/Strings.inc` (with
-   `extract_host_strings.py` if python + pefile are available);
+   `extract_host_strings.py` if python is available);
 3. the engine: `git submodule add <url> engine` (url = `origin` of the engine that contains the script, or `-EngineUrl`); with `-CopyEngine` a copy (not recommended: it diverges);
 4. a filled-in `re/game.cfg` (the game's binaries; `NAMES`/`EXPORTS_FROM` point to the engine's workspace), `re/lib_start.tsv` (TODO lines), `re/notes/` with skeletons for the exe and the scene DLL, `binaries.md`, an empty `function_names.tsv`,
    and the notes of the reference game in `re/notes/reference-game/`; `CLAUDE.md` (model) and `docs/NOTES.md` (skeleton with the checklist);
 5. `git init` + first commit (skipped with `-NoCommit`).
+
+### 4.3 Icon, version info and manifest of the executable (`rapture_add_win32_resources`)
+
+`engine/cmake/RaptureWin32Resources.cmake` (included by the engine's `CMakeLists.txt`) gives a game's executable the resources a Windows program is expected to have, so that it does not look like an anonymous unsigned exe (Explorer icon, Properties > Details, antivirus heuristics):
+
+```
+rapture_add_win32_resources(<game>
+    ICON_FROM "${GAME_DATA}/<Host>.exe"  [ICON_GROUP <id>]
+    VERSION 1.0.0  PRODUCT "<title> (unofficial port)"  DESCRIPTION "<title> - unofficial SDL2 port"
+    INTERNAL_NAME "<name>"  FILENAME "<game>.exe"  [COMPANY ..] [COPYRIGHT ..] [COMMENTS ..] [DPI UNAWARE|SYSTEM|PERMONITOR])
+```
+
+* The icon (resource 1, multi-image) is read **at configure time from the user's own original exe** by `engine/tools/pe_resources.py ico` (standard library only; `python -I pe_resources.py list <pe>` lists the resources): no icon is stored in any repository. Missing file / no icon = warning and a build without icon, never an error. SDL2 registers resource 1 as the icon of its window class, so the title bar and taskbar show it too.
+* A `VERSIONINFO` block (CompanyName, FileDescription, FileVersion, InternalName, LegalCopyright, OriginalFilename, ProductName, ProductVersion, Comments; default texts say "unofficial fan port") and an application manifest (`asInvoker`, supportedOS Vista..11). `DPI UNAWARE` (default) writes no `dpiAware` element, which is what the games did without a manifest (verified: `GetProcessDpiAwareness` = 0 before and after).
+* Generated into `<build>/rapture_rc/<target>/` and compiled with the CMake RC language (MinGW `windres`).
+* Which icon: every original host exe has an icon group; Explorer shows the first group (lowest id). Two exes (`Shoot.exe`, `Ruckus.exe`) have a second group with the same three images in another order; the first is used. `Launcher.exe` has the same artwork but is not needed.
 
 ## 5. Recommended layout for several games
 
