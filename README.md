@@ -68,7 +68,7 @@ git clone --recurse-submodules <game repository>
 
 `tools/new-game.ps1 -GameDir <game folder> -Name <name>` creates the skeleton of a new game
 repository with this one as a submodule. In the game's `CMakeLists.txt`: `add_subdirectory(engine)`,
-`target_link_libraries(<game> PRIVATE rapture SDL2::SDL2main)` and `rapture_copy_sdl2_dll(<game>)`.
+`target_link_libraries(<game> PRIVATE rapture SDL2::SDL2main)` and `rapture_copy_sdl2_dll(<game>)` (copies `SDL2.dll` and the MinGW runtime DLLs it needs next to the exe, so the build folder runs without MinGW on the PATH).
 Optionally `rapture_add_win32_resources(<game> ICON_FROM "${GAME_DATA}/<Host>.exe" VERSION ... PRODUCT ... DESCRIPTION ... FILENAME ...)`
 adds an icon (read at configure time from the user's own original exe, nothing is stored in the repository), version info and a manifest ([docs/REUSE.md](docs/REUSE.md) 4.3).
 The game's `main.cpp` is one line: `return rapture::HostMain(argc, argv, <Game>HostConfig());`.
