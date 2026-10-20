@@ -1,6 +1,6 @@
 // AVI playback: minimal RIFF/AVI demuxer + Microsoft Video 1 ("CRAM"/"MSVC") 16-bit decoder
 // + uncompressed PCM audio track (DDLogo.avi / DILogo.avi: 640x480, 12 fps, 22050 Hz stereo s16).
-// The demuxer is adapted from the mahjong port's Movie.cpp (Cinepak decoder replaced).
+// The demuxer is adapted from an earlier SDL2 port by the same author (Cinepak decoder replaced).
 #pragma once
 
 #include "platform/Gfx.h"

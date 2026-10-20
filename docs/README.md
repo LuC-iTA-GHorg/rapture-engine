@@ -1,6 +1,6 @@
 # Engine (`engine/`) — faithful port of moses.dll + Aaron.dll
 
-> Note (2026-10-19): this engine is the `rapture-engine` repo, the `engine/` submodule of a per-game repo. MuShoot (`mushoot-rapture-port`) is the **reference game**
+> Note (2026-10-19): this engine is the `rapture-engine` repo, the `engine/` submodule of a per-game repo. MuShoot (its own private repo) is the **reference game**
 > cited in the examples (`mushoot.exe`, `Shoot.exe`/`Shoot.dll`). The analysis of the engine binaries (moses, Aaron, host `Shoot.exe`) and of `Shoot.dll` (the MuShoot scene)
 > was done on the original binaries; those notes are not part of this repository and are mentioned only as provenance.
 > This is an unofficial fan project for preservation and interoperability: it contains no game data and no original or decompiled code; you must own the original games.

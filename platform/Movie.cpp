@@ -21,7 +21,7 @@ constexpr uint32_t Fourcc(const char (&s)[5]) {
 }
 
 // Minimal RIFF/AVI demuxer: one video stream and an optional PCM audio stream
-// (adapted from the mahjong port).
+// (adapted from an earlier SDL2 port by the same author).
 struct AviInfo {
     uint32_t usPerFrame = 0;
     int width = 0, height = 0, bitCount = 0;
