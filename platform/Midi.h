@@ -1,20 +1,22 @@
 // MIDI support for sound kind 2 (compact stream, moses.dll 0x10010a74 / MidiSetTempo 0x10010708).
 //
-// Stream = sequence of dwords: bit31 set -> delta time (low 31 bits), otherwise a short MIDI
+// Stream = sequence of dwords: bit31 set -> delay (low 31 bits), otherwise a short MIDI
 // event packed as status | d1<<8 | d2<<16 (program change / channel pressure have 2 bytes).
 //
-// TEMPO UNCERTAINTY: the unit of the delta values was never verified in the original code.
-// CompactMidiToSmf() assumes 1 delta unit = 1 ms (division 1000, tempo 1,000,000 us/quarter),
-// identical to engine/tools/rrs_extract.py. If the music sounds too fast/slow, change
-// kMsPerDeltaUnit-equivalent in the SMF header (MidiTempoScale below).
+// TIMING (verified against the original MIDI thread, moses.dll 0x10012de3): the delay is in MILLISECONDS, the thread adds it
+// to a timeGetTime() target.  Playback is done by the software sequencer (MidiSeq.h / MidiPlayer below).
+// CompactMidiToSmf() (1 unit = 1 ms: division 1000, tempo 1,000,000 us/quarter) is only a conversion helper for tools and tests.
 #pragma once
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
-// Multiply delta times by this when converting (1.0 = 1 unit is 1 ms).
+#include "platform/MidiSeq.h"
+
+// Multiply delta times by this in CompactMidiToSmf (1.0 = 1 unit is 1 ms; does not affect the sequencer).
 extern double MidiTempoScale;
 
 // moses.dll CMidiPlayer::thread_proc 0x10012de3, ini [audio] RemapDrums: a short message whose low nibble is 9 (MIDI channel 10,
@@ -29,19 +31,39 @@ std::vector<uint8_t> MidiPrepareCompact(const std::vector<uint8_t>& in, bool rem
 // Portable: builds a format-0 Standard MIDI File in memory.
 std::vector<uint8_t> CompactMidiToSmf(const uint8_t* data, size_t size);
 
-// Windows-only playback (MCI "sequencer" device; writes the SMF to a temp file). On other
-// platforms every call is a harmless no-op returning false. Isolated in Midi_win.cpp.
+// Sequencer-driven playback of a compact stream (see MidiSeq.h for the timing semantics).  Replaces the old MCI "sequencer"
+// device player: the stream is NOT converted to a Standard MIDI File any more, the dwords are scheduled one by one.
+//
+//  * default: one worker thread (started on the first Play) polls the MidiSequencer with a real millisecond clock;
+//  * manual clock (tests): no thread, Update() polls with the virtual clock set by SetManualClock().
+// The messages go to a MidiSink: winmm midiOutShortMsg on Windows, a no-op/logging sink elsewhere (or whatever the tests
+// install with SetSink).
 class MidiPlayer {
 public:
-    ~MidiPlayer() { Stop(); }
-    bool Play(const std::vector<uint8_t>& smf, bool loop);
+    MidiPlayer();
+    ~MidiPlayer();
+    MidiPlayer(const MidiPlayer&) = delete;
+    MidiPlayer& operator=(const MidiPlayer&) = delete;
+
+    // Test / embedding hooks (call before the first Play).
+    void SetSink(std::shared_ptr<MidiSink> sink);
+    void SetManualClock(MidiClock* clock); // null = real clock + worker thread again
+
+    // `compact` = the dword stream of the sound (bit31 = delay in ms).  remapDrums: ini [audio] RemapDrums.
+    bool Play(const std::vector<uint8_t>& compact, bool loop, bool remapDrums = false);
     void Stop();
-    bool IsPlaying();
-    void Update(); // call regularly; restarts the sequence when looping and it has ended
-    void BreakLoops() { loop_ = false; } // WP-5: CMidiPlayer::BreakLoops (moses.dll 0x10629): finish the current run, do not restart
+    bool IsPlaying();                               // running (a paused sequence still counts as running)
+    void Update();                                  // call regularly from the main thread; polls only in manual-clock mode
+    void BreakLoops();                              // CMidiPlayer::BreakLoops (moses.dll 0x10012fa9)
+    void SetChannelMute(uint32_t channel, bool mute); // live; CMidiPlayer::SetChannelMute (0x10012ff9)
+    void SetTempo(uint32_t num, uint32_t den);        // live; CMidiPlayer::SetTempo (0x100130ae)
+    void Hold(bool on);                              // pause/resume keeping the position (not used by CAudioLib, see MidiSeq.h)
+    uint64_t NowMs();
+
+    MidiSequencer& Sequencer() { return seq_; } // tests: inspect only, not thread-safe while the worker runs
 
 private:
-    bool open_ = false;
-    bool loop_ = false;
-    std::string tmpPath_;
+    struct Impl;
+    Impl* d_;
+    MidiSequencer seq_;
 };

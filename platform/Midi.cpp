@@ -1,5 +1,10 @@
 #include "platform/Midi.h"
 
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
+
 double MidiTempoScale = 1.0;
 
 namespace {
@@ -75,4 +80,128 @@ std::vector<uint8_t> MidiPrepareCompact(const std::vector<uint8_t>& in, bool rem
         for (int k = 0; k < 4; ++k) out.push_back(uint8_t(v >> (8 * k)));
     }
     return out;
+}
+// ---------------------------------------------------------------------------------------------------------------------
+// MidiPlayer: driver of the MidiSequencer (the original CMidiPlayer, moses.dll 0x10012de3 ... 0x10013120)
+struct MidiPlayer::Impl {
+    std::mutex m;
+    std::condition_variable cv;
+    std::thread th;
+    bool quit = false;
+    std::shared_ptr<MidiSink> sink;
+    MidiRealClock realClock;
+    MidiClock* clock = &realClock;
+    bool manual = false;
+};
+
+MidiPlayer::MidiPlayer() : d_(new Impl) {}
+
+MidiPlayer::~MidiPlayer() {
+    {
+        std::lock_guard<std::mutex> lk(d_->m);
+        d_->quit = true;
+        d_->cv.notify_all();
+    }
+    if (d_->th.joinable()) d_->th.join();
+    seq_.Stop();
+    delete d_;
+}
+
+void MidiPlayer::SetSink(std::shared_ptr<MidiSink> sink) {
+    Stop();
+    std::lock_guard<std::mutex> lk(d_->m);
+    d_->sink = std::move(sink);
+    seq_.SetSink(d_->sink.get());
+}
+
+void MidiPlayer::SetManualClock(MidiClock* clock) {
+    Stop();
+    {
+        std::lock_guard<std::mutex> lk(d_->m);
+        d_->quit = true;
+        d_->cv.notify_all();
+    }
+    if (d_->th.joinable()) d_->th.join();
+    std::lock_guard<std::mutex> lk(d_->m);
+    d_->quit = false;
+    d_->manual = clock != nullptr;
+    d_->clock = clock ? clock : &d_->realClock;
+}
+
+uint64_t MidiPlayer::NowMs() { return d_->clock->NowMs(); }
+
+bool MidiPlayer::Play(const std::vector<uint8_t>& compact, bool loop, bool remapDrums) {
+    std::vector<uint32_t> ev(compact.size() / 4);
+    for (size_t i = 0; i < ev.size(); ++i)
+        ev[i] = uint32_t(compact[i * 4]) | uint32_t(compact[i * 4 + 1]) << 8 | uint32_t(compact[i * 4 + 2]) << 16 |
+                uint32_t(compact[i * 4 + 3]) << 24;
+    std::unique_lock<std::mutex> lk(d_->m);
+    if (!d_->sink) d_->sink = std::shared_ptr<MidiSink>(CreateDefaultMidiSink().release());
+    seq_.SetSink(d_->sink.get());
+    if (!seq_.Start(ev.data(), ev.size(), loop, d_->clock->NowMs(), remapDrums)) return false;
+    if (d_->manual) {
+        uint64_t wake;
+        seq_.Poll(d_->clock->NowMs(), &wake); // events at time 0 go out at once, like the thread does
+        return true;
+    }
+    if (!d_->th.joinable()) {
+        Impl* d = d_;
+        MidiSequencer* seq = &seq_;
+        d->th = std::thread([d, seq] {
+            std::unique_lock<std::mutex> l(d->m);
+            while (!d->quit) {
+                uint64_t before = d->clock->NowMs(), wake = 0;
+                auto st = seq->Poll(before, &wake);
+                if (st == MidiSequencer::Status::Waiting && wake != UINT64_MAX) {
+                    uint64_t ms = wake > before ? wake - before : 1; // wake == before: event budget used up, yield
+                    d->cv.wait_for(l, std::chrono::milliseconds(ms));
+                } else if (st != MidiSequencer::Status::Waiting || wake == UINT64_MAX) {
+                    d->cv.wait(l); // idle, finished or held: sleep until a control call wakes us
+                }
+            }
+        });
+    }
+    d_->cv.notify_all();
+    return true;
+}
+
+void MidiPlayer::Stop() {
+    std::lock_guard<std::mutex> lk(d_->m);
+    seq_.Stop();
+    d_->cv.notify_all();
+}
+
+bool MidiPlayer::IsPlaying() {
+    std::lock_guard<std::mutex> lk(d_->m);
+    return seq_.Running();
+}
+
+void MidiPlayer::Update() {
+    if (!d_->manual) return;
+    std::lock_guard<std::mutex> lk(d_->m);
+    uint64_t wake;
+    seq_.Poll(d_->clock->NowMs(), &wake);
+}
+
+void MidiPlayer::BreakLoops() {
+    std::lock_guard<std::mutex> lk(d_->m);
+    seq_.BreakLoops();
+}
+
+void MidiPlayer::SetChannelMute(uint32_t channel, bool mute) {
+    std::lock_guard<std::mutex> lk(d_->m);
+    seq_.SetChannelMute(channel, mute);
+}
+
+void MidiPlayer::SetTempo(uint32_t num, uint32_t den) {
+    std::lock_guard<std::mutex> lk(d_->m);
+    seq_.SetTempo(num, den);
+    d_->cv.notify_all();
+}
+
+void MidiPlayer::Hold(bool on) {
+    std::lock_guard<std::mutex> lk(d_->m);
+    if (on) seq_.Pause(d_->clock->NowMs());
+    else seq_.Resume(d_->clock->NowMs());
+    d_->cv.notify_all();
 }

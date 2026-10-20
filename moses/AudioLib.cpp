@@ -61,6 +61,7 @@ void CAudioLib::stop_snd(CAudioSnd* snd, bool emit) {
     snd->virtualPlay = false;
     if (snd->data.kind == ::Sound::kMidi && midiSnd_ == snd) {
         if (device_) midi_.Stop();
+        midi_suspended_ = false;
         midiSnd_ = nullptr;
     }
     snd->playing = false;
@@ -79,12 +80,6 @@ void CAudioLib::apply_master() {
 float CAudioLib::wave_gain(CAudioSnd*, const PLAYSOUNDINFO* info) const {
     if (info && (info->flags & PSF_VOLUME)) return std::min(100u, info->volume) / 100.0f;
     return 1.0f;
-}
-
-// Compact MIDI preparation: tempo scaling (ms = delta*num/den, moses 0x10010708) and muted channels
-// (note-on of muted channels dropped, 0x1001064f). Stream = dwords, bit31 = delta.
-static std::vector<u8> PrepareMidi(const std::vector<u8>& in, bool remap, u32 muteMask, u32 num, u32 den) {
-    return MidiPrepareCompact(in, remap, muteMask, num, den); // platform/Midi.cpp (also RemapDrums 0x10012de3)
 }
 
 // moses.dll 0x10010e1f (+ wave engine Play, MIDI engine Play 0x10011f17, AVI engine)
@@ -129,10 +124,10 @@ int CAudioLib::SoundPlay(CAudioSnd* snd, PLAYSOUNDINFO* info) {
         }
         snd->info = *info;
         snd->loop = (info->flags & PSF_LOOP) != 0;
+        midi_suspended_ = false;
         if (device_) {
-            std::vector<u8> prepared = PrepareMidi(snd->data.midi, remap_drums_ != 0, midi_mute_mask_, tempo_num_, tempo_den_);
-            std::vector<u8> smf = CompactMidiToSmf(prepared.data(), prepared.size());
-            if (!midi_.Play(smf, snd->loop)) return 0;
+            // The software sequencer applies RemapDrums, the channel mutes and the tempo itself, live (platform/MidiSeq.h).
+            if (!midi_.Play(snd->data.midi, snd->loop, remap_drums_ != 0)) return 0;
         } else {
             snd->virtualPlay = true;
         }
@@ -184,23 +179,25 @@ void CAudioLib::StopMidi() {
     if (midiSnd_) stop_snd(midiSnd_, true);
 }
 
-// moses.dll 0x1001064f: mute note-ons of channel % 16 (affects MIDI started afterwards)
+// moses.dll 0x1001064f: mute note-ons of channel % 16 (live: also applies to the sequence that is playing)
 void CAudioLib::MidiSetChannel(u32 channel, int mute) {
     u32 bit = 1u << (channel % 16);
     if (mute) midi_mute_mask_ |= bit;
     else midi_mute_mask_ &= ~bit;
+    midi_.SetChannelMute(channel, mute != 0); // live, also while a sequence plays (CMidiPlayer::SetChannelMute 0x10012ff9)
 }
 
-// moses.dll 0x10010708: ms = delta*num/den
+// moses.dll 0x10010708: ms = delta*num/den (live: the delays read from now on)
 void CAudioLib::MidiSetTempo(u32 num, u32 den) {
     tempo_num_ = num;
     tempo_den_ = den;
+    midi_.SetTempo(num, den); // live: the delays read from now on are scaled (CMidiPlayer::SetTempo 0x100130ae)
 }
 
 // moses.dll 0x10010629: leave the loop at the end of the current run
 void CAudioLib::MidiBreakLoops() {
     if (midiSnd_) midiSnd_->loop = false;
-    midi_.BreakLoops(); // CMidiPlayer::BreakLoops: the platform sequencer will not restart the sequence
+    midi_.BreakLoops(); // CMidiPlayer::BreakLoops: the sequence ends after the current run instead of restarting
 }
 
 // moses.dll 0x10010881
@@ -225,6 +222,7 @@ void CAudioLib::Pause(int on) {
     if (paused_ == b) return;
     paused_ = b;
     // TODO(pkg2): the mixer has no pause; paused audio is silenced (master gain 0) but keeps advancing.
+    midi_gate();
     if (device_) apply_master();
     apply_cd();
 }
@@ -234,8 +232,34 @@ void CAudioLib::Activate(int on) {
     bool b = on != 0;
     if (active_ == b) return;
     active_ = b;
+    midi_gate();
     if (device_) apply_master();
     apply_cd();
+}
+
+// moses.dll 0x10011be9 (called by 0x10011df1 = Pause and 0x10011dc9 = Activate): the original does not pause the MIDI. Pause(1) or
+// Activate(0) STOPS the player (all notes off, device closed, thread killed) without notification; when the sound is neither paused
+// nor deactivated any more the current sound is Played again FROM THE BEGINNING (the engine Play, which also queues "started").
+void CAudioLib::midi_gate() {
+    if (!device_) return;
+    bool suspend = paused_ || !active_;
+    if (suspend) {
+        if (midiSnd_ && !midi_suspended_ && midi_.IsPlaying()) {
+            midi_.Stop();
+            midi_suspended_ = true;
+        }
+    } else if (midi_suspended_) {
+        midi_suspended_ = false;
+        if (midiSnd_) {
+            if (midi_.Play(midiSnd_->data.midi, midiSnd_->loop, remap_drums_ != 0)) notify(midiSnd_, SND_STARTED);
+            else {
+                midiSnd_->playing = false;
+                CAudioSnd* s = midiSnd_;
+                midiSnd_ = nullptr;
+                notify(s, SND_ENDED);
+            }
+        }
+    }
 }
 
 // moses.dll 0x100107fc
@@ -296,7 +320,7 @@ void CAudioLib::Service() {
                 }
             } else if (midiSnd_ == s) {
                 midi_.Update();
-                if (!s->loop && !midi_.IsPlaying()) {
+                if (!midi_suspended_ && !s->loop && !midi_.IsPlaying()) {
                     s->playing = false;
                     midiSnd_ = nullptr;
                     notify(s, SND_ENDED);

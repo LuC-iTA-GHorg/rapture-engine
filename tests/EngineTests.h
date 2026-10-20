@@ -9,3 +9,5 @@ int RunPkg3Tests(int argc, char** argv); // aaron app / window / scene / timers 
 int RunPkg4Tests(int argc, char** argv); // aaron widgets / dialogs / text
 int RunPkg9Tests(int argc, char** argv); // WP-9: rapture.ini reader/writer, debug rects overlay, RemapDrums (tests/Ini_Test.cpp)
 int RunMoses5Tests();                    // WP-5: moses completeness (called at the end of RunPkg1Tests)
+int RunPkg10Tests(int argc, char** argv); // limits branch: MIDI sequencer, joystick, portability (tests/Limits_Test.cpp)
+int RunMidiSeqTests();                   // tests/MidiSeq_Test.cpp, returns the number of failures

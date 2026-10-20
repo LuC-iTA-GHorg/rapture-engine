@@ -1,66 +1,56 @@
-// MidiPlayer backend. Windows-only (winmm MCI sequencer); stubs elsewhere.
-#include "platform/Midi.h"
+// MidiSink backend for Windows: winmm midiOutShortMsg, exactly the calls of the original MIDI thread (moses.dll 0x10012d3b
+// open, 0x10012de3 short messages, 0x10012d87 all-notes-off + reset, 0x10012d00 close).  Only compiled when RAPTURE_WIN32.
+#include "platform/Config.h"
 
-#ifdef _WIN32
+#ifdef RAPTURE_WIN32
 #include <windows.h>
 #include <mmsystem.h>
 
-#include <cstdio>
-#include <cstring>
+#include "platform/MidiSeq.h"
 
 namespace {
-const char* kAlias = "hs_midi";
-}
+class WinmmMidiSink : public MidiSink {
+public:
+    ~WinmmMidiSink() override { Close(); }
 
-bool MidiPlayer::Play(const std::vector<uint8_t>& smf, bool loop) {
-    Stop();
-    char dir[MAX_PATH];
-    DWORD n = GetTempPathA(MAX_PATH, dir);
-    if (!n || n >= MAX_PATH) return false;
-    tmpPath_ = std::string(dir) + "hs_music.mid";
-    FILE* f = std::fopen(tmpPath_.c_str(), "wb");
-    if (!f) return false;
-    std::fwrite(smf.data(), 1, smf.size(), f);
-    std::fclose(f);
-
-    std::string cmd = "open \"" + tmpPath_ + "\" type sequencer alias " + kAlias;
-    if (mciSendStringA(cmd.c_str(), nullptr, 0, nullptr) != 0) return false;
-    open_ = true;
-    loop_ = loop;
-    mciSendStringA((std::string("set ") + kAlias + " time format milliseconds").c_str(), nullptr, 0, nullptr);
-    if (mciSendStringA((std::string("play ") + kAlias + " from 0").c_str(), nullptr, 0, nullptr) != 0) {
-        Stop();
-        return false;
+    // moses.dll 0x10012d3b: midiOutOpen(&h, MIDI_MAPPER, 0, 0, 0)
+    bool Open() override {
+        if (h_) return true;
+        if (midiOutOpen(&h_, MIDI_MAPPER, 0, 0, 0) != MMSYSERR_NOERROR) {
+            h_ = nullptr;
+            return false;
+        }
+        timeBeginPeriod(1); // the sequencer sleeps with millisecond targets: ask for a 1 ms timer
+        timer_ = true;
+        Reset();
+        return true;
     }
-    return true;
-}
+    void ShortMsg(uint32_t msg, uint64_t) override {
+        if (h_) midiOutShortMsg(h_, msg);
+    }
+    // moses.dll 0x10012d87: CC 0x7b (all notes off) on the 16 channels, then midiOutReset
+    void Reset() override {
+        if (!h_) return;
+        for (uint32_t ch = 0; ch < 16; ++ch) midiOutShortMsg(h_, 0xb0u | ch | (0x7bu << 8));
+        midiOutReset(h_);
+    }
+    // moses.dll 0x10012d00
+    void Close() override {
+        if (h_) {
+            midiOutClose(h_);
+            h_ = nullptr;
+        }
+        if (timer_) {
+            timeEndPeriod(1);
+            timer_ = false;
+        }
+    }
 
-void MidiPlayer::Stop() {
-    if (!open_) return;
-    mciSendStringA((std::string("stop ") + kAlias).c_str(), nullptr, 0, nullptr);
-    mciSendStringA((std::string("close ") + kAlias).c_str(), nullptr, 0, nullptr);
-    open_ = false;
-    if (!tmpPath_.empty()) std::remove(tmpPath_.c_str());
-}
+private:
+    HMIDIOUT h_ = nullptr;
+    bool timer_ = false;
+};
+} // namespace
 
-bool MidiPlayer::IsPlaying() {
-    if (!open_) return false;
-    char buf[64] = {0};
-    if (mciSendStringA((std::string("status ") + kAlias + " mode").c_str(), buf, sizeof(buf), nullptr) != 0)
-        return false;
-    return std::strcmp(buf, "playing") == 0;
-}
-
-void MidiPlayer::Update() {
-    if (open_ && loop_ && !IsPlaying())
-        mciSendStringA((std::string("play ") + kAlias + " from 0").c_str(), nullptr, 0, nullptr);
-}
-
-#else
-
-bool MidiPlayer::Play(const std::vector<uint8_t>&, bool) { return false; }
-void MidiPlayer::Stop() {}
-bool MidiPlayer::IsPlaying() { return false; }
-void MidiPlayer::Update() {}
-
+std::unique_ptr<MidiSink> CreateDefaultMidiSink() { return std::unique_ptr<MidiSink>(new WinmmMidiSink()); }
 #endif

@@ -1,5 +1,5 @@
 // CAudioLib: sound engine of moses.dll (moses.md sec. 9) on top of platform/Audio (mixer),
-// platform/Midi (MCI sequencer on Windows), platform/Movie (AVI).
+// platform/Midi (software sequencer thread, winmm midiOutShortMsg backend on Windows), platform/Movie (AVI).
 //
 // PORT DESIGN
 //  * No threads: the platform mixer has its own audio callback; EVERYTHING else (start/end
@@ -117,6 +117,7 @@ public:
     // Headless switch (tests): false = never open the audio device nor the MIDI sequencer; plays become
     // "virtual" (STARTED/ENDED notifications are still delivered by Service()). Default true.
     void EnableDevice(bool on) { device_ = on; if (cd_) cd_->SetDevice(on); }
+    MidiPlayer& Midi() { return midi_; }            // tests: install a MidiSink / manual clock (MidiPlayer::SetSink / SetManualClock)
     u8 RemapDrums() const { return remap_drums_; }   // AUDIOSTATE+0x3a, from rapture.ini [audio] RemapDrums (read in the ctor)
     u32 LiveSoundCount() const { return u32(all_.size()); }
 
@@ -125,6 +126,7 @@ private:
     void stop_snd(CAudioSnd* snd, bool emit);
     void apply_master();
     void apply_cd();
+    void midi_gate();               // moses.dll 0x10011be9: Pause/Activate stop the MIDI player and restart the sound on resume
     struct Pending { u32 id; SNDNOTIFY n; PLAYSOUNDINFO info; };
     std::vector<Pending> pending_;
     bool device_ = true;
@@ -142,6 +144,7 @@ private:
     u32 tempo_num_ = 1, tempo_den_ = 1;
     MidiPlayer midi_;
     CAudioSnd* midiSnd_ = nullptr;
+    bool midi_suspended_ = false;   // player stopped by Pause/Activate(0), to be restarted from the beginning on resume
     std::vector<CAudioSnd*> all_;   // every live sound (owned) - for Service()/Reset()
     std::unique_ptr<CCdAudio> cd_;  // +10 of the pimpl (created by get_cd)
     ::Window* host_ = nullptr;

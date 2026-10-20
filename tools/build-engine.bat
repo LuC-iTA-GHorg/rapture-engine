@@ -32,7 +32,7 @@ echo Build OK: %OUT%\rapture_tests.exe
 
 if /i "%~1"=="test" (
     rem the exe is a GUI-subsystem program: its output goes to the console only when started from one; redirect to see it
-    for %%T in ("--engine-test 1" "--engine-test 3" "--engine-test 4" "--engine-test 9" "--game-test arcade" "--game-test host") do (
+    for %%T in ("--engine-test 1" "--engine-test 3" "--engine-test 4" "--engine-test 9" "--engine-test 10" "--game-test arcade" "--game-test host") do (
         "%OUT%\rapture_tests.exe" %%~T > "%OUT%\test.log" 2>&1
         echo %%~T: exit code %errorlevel%
         findstr /C:"checks" /C:"failure" /C:"OK" "%OUT%\test.log"
