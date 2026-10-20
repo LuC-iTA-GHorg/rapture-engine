@@ -314,7 +314,8 @@ public:
     // Aaron ord 452 0x10006bf6 Timer::OnMessage: receives AMSG_TICK from the scene's TimerMgr (internal).
     void OnTick(u32 totalMs, u32 deltaMs);
     void OnAdvise(int code, intptr_t value, Broadcaster* src) override; // Subscriber: code == AMSG_TICK -> OnTick(value, 0)
-    void Pause(bool on);        // Aaron 0x10006d07: shifts the next deadline by the TimerMgr total (pause / resume)
+    // Aaron ord 515 0x10006d07 = vtable slot 7 (hide change): hiding stores the time left (deadline -= TimerMgr total), showing restores it (+=)
+    void OnHideChange(bool hidden) override;
     u32 Remaining() const;      // Aaron 0x10006b27
     void Restart();             // Aaron 0x10006db7: Start(period, userData) again if period != 0
     bool Running() const { return running_; }

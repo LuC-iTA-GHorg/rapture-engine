@@ -345,6 +345,27 @@ void TestTimer() {
     CHECK(t->Count() == 1 && sc.Drain().empty());
     sc.RootWidget()->DeleteChildren();
     CHECK(sc.Timers().ListenerCount() == 0);   // ~Timer unsubscribed
+
+    // hiding a Timer (Aaron ord 515, vtable slot 7) freezes the time left; showing it resumes from there
+    {
+        sc.Timers().Tick(6500);                // no listener: the manager forgets its reference time
+        auto* h = new Timer(&sc, 0x1403, 0, 0, 0);
+        sc.Drain();
+        h->Start(100, 0xffffffffu);
+        sc.Timers().Tick(7000);                // baseline
+        sc.Timers().Tick(7040);                // 40 ms elapsed, 60 left
+        h->HideCount(1);
+        CHECK(h->IsHidden() && h->Remaining() == 60);
+        sc.Timers().Tick(7500);                // time passes while hidden: nothing happens
+        CHECK(h->Count() == 0 && sc.Drain().empty() && h->Remaining() == 60);
+        h->HideCount(0);
+        CHECK(!h->IsHidden() && h->Remaining() == 60);
+        sc.Timers().Tick(7550);
+        CHECK(h->Count() == 0);
+        sc.Timers().Tick(7560);                // 60 ms after it was shown
+        CHECK(h->Count() == 1 && sc.Drain().size() == 1);
+        sc.RootWidget()->DeleteChildren();
+    }
 }
 
 void TestWp2Ordinals() {
@@ -355,6 +376,24 @@ void TestWp2Ordinals() {
     u32 ia = sc.AddResource(&a), ib = sc.AddResource(&b);
     CHECK(ia == 0xff800000u && ib == 0xff800001u);
     CHECK(sc.DynamicResource(ia) == &a && sc.DynamicResource(ib) == &b && sc.DynamicResource(0x00000000u) == nullptr);
+    // dynamic resources are reference counted: AddResource gives the creator's reference; every Load adds one, every Free removes one,
+    // the last Free runs the deleter (the original's ResTable::Release for the slot 0xff)
+    {
+        static int deleted = 0;
+        deleted = 0;
+        int* obj = new int(5);
+        u32 id = sc.AddResource(obj, [](void* p) { ++deleted; delete static_cast<int*>(p); });
+        CHECK(sc.LoadResource(id) == obj && sc.LoadResource(id) == obj);     // 3 references
+        sc.FreeResource(id);
+        sc.FreeResource(id);
+        CHECK(deleted == 0 && sc.DynamicResource(id) == obj);
+        sc.FreeResource(id);                                                 // the creator's: gone
+        CHECK(deleted == 1 && sc.DynamicResource(id) == nullptr && sc.LoadResource(id) == nullptr);
+        u32 id2 = sc.AddResource(new int(6), [](void* p) { ++deleted; delete static_cast<int*>(p); });
+        CHECK(id2 == id);                                                    // the free entry is reused
+        sc.FreeResource(id2);
+        CHECK(deleted == 2);
+    }
     // ord 226 / 234 / 237: empty functions
     DibSprite::Nop226(); Timer::Nop234(); Widget::Nop237();
     // ord 488 Widget::LoadAndActivate: no resource -> LoadRes succeeds, Activate runs

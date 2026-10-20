@@ -133,7 +133,7 @@ Which opcodes the tables of each game use has not been measured yet (WP-6).
 | 6 | group of ids (4 byte header) | `moses.dll 0x1000ca60` | `RT_GROUP` | implemented |  |
 | 7 | DIBREF (same bitmap, other hot spot) | `moses.dll 0x1000c8e0` | `RT_DIBREF` | implemented |  |
 | 8 | DIBLIST | `moses.dll 0x1000c850` | `RT_DIBLIST` | implemented |  |
-| 9 | DIBTILE (mosaic of dibs) | `moses.dll 0x1000c970` | `RT_DIBTILE` | implemented | WP-1: CDibTile + load_dibtile; none of the archives of the 4 games contains type 9 (Flounder imports CDibTile: to be checked in its port) |
+| 9 | DIBTILE (mosaic of dibs) | `moses.dll 0x1000c970` | `RT_DIBTILE` | implemented | WP-1: CDibTile + load_dibtile; none of the archives of the 4 games contains type 9: Flounder builds its CDibTile at run time (`CDibTile::Init/SetDib`) and registers it as a dynamic resource; checked against the original in the Flounder port, exercised by the scrolling levels |
 | 11 | group of ids (8 byte header) | `moses.dll 0x1000ca60` | `RT_GROUP2` | implemented |  |
 | 12 | string | `moses.dll 0x1000c590` | `RT_STRING` | implemented |  |
 

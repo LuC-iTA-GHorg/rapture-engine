@@ -70,12 +70,11 @@ void Timer::OnTick(u32 total, u32 delta) {
     }
 }
 
-// Aaron 0x10006d07: pause (shift forward by the total) / resume (shift back).
-void Timer::Pause(bool on) {
-    if (running_) {
-        if (on) acc_ += scene_->Timers().TotalMs();
-        else acc_ -= scene_->Timers().TotalMs();
-    }
+// Aaron ord 515 0x10006d07 (slot 7 of the Timer vtable, called by Widget::HideCount): while hidden the timer does not tick and `acc_` holds the time left.
+void Timer::OnHideChange(bool hidden) {
+    if (!running_) return;
+    if (hidden) acc_ -= scene_->Timers().TotalMs();
+    else acc_ += scene_->Timers().TotalMs();
 }
 
 // Aaron 0x10006b27

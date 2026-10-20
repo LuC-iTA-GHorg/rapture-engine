@@ -184,6 +184,22 @@ void test_broadcaster() {
         delete b2; // ~Broadcaster clears the back reference: s3's destructor must not touch the dead broadcaster
         CHECK(s3.n == 0);
     }
+    // Broadcast2: the second dword is plain data; a Subscriber that overrides OnAdvise2 gets both, the others get it as the source pointer
+    struct Sub2 : Subscriber {
+        int code = 0;
+        intptr_t a = 0, b = 0;
+        void OnAdvise2(int c, intptr_t x, intptr_t y) override { code = c; a = x; b = y; }
+    };
+    Broadcaster b2;
+    Sub2 q;
+    Sub plain;
+    b2.AddListener(&q);
+    b2.AddListener(&plain);
+    b2.Broadcast2(0x1401, 7, 0x12345);
+    CHECK(q.code == 0x1401 && q.a == 7 && q.b == 0x12345);
+    CHECK(plain.n == 1 && plain.lastCode == 0x1401 && plain.lastVal == 7);
+    b2.Broadcast(3, 9, &b2);                      // the plain Broadcast still reaches OnAdvise2's default (-> OnAdvise) / the override with the pointer
+    CHECK(q.code == 3 && q.a == 9 && q.b == intptr_t(&b2) && plain.n == 2);
 }
 
 void test_regkey() {

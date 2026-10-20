@@ -265,6 +265,37 @@ void TestCompose() {
     CHECK(Px(v, 0, -9) == GREEN);
 }
 
+void TestScroll() {
+    // CDrawView::Scroll (0x100076f0): scrollable objects move by (dx, dy), the others stay; the view shows the result at once
+    // (the original ScrollDCs and redraws the exposed strips, the port recomposes the scroll box: same pixels)
+    std::printf("[scroll]\n");
+    Fixture f;
+    CDrawView& v = f.view;
+    f.res.dibs[1] = Solid(40, 40, RED);
+    f.res.dibs[2] = Solid(10, 10, GREEN);
+    CDrawDib A(&v, 1), F(&v, 5);
+    A.Animate(1);
+    A.SetScrollable(1);
+    F.Animate(2);
+    F.SetPosition(26, 0);
+    CHECK(Px(v, -17, 0) == RED && Px(v, 22, 15) == BLACK);
+    v.Scroll(5, 0);
+    CHECK(A.GetPosition()->x == 5 && A.GetPosition()->y == 0);
+    CHECK(F.GetPosition()->x == 26);                       // not scrollable: stays
+    CHECK(Px(v, -17, 0) == BLACK && Px(v, -14, 0) == RED);
+    CHECK(Px(v, 22, 15) == RED && Px(v, 24, 0) == GREEN);
+    v.Scroll(0, -7);
+    CHECK(A.GetPosition()->y == -7 && Px(v, 0, 14) == BLACK && Px(v, 0, 12) == RED && Px(v, 0, -22) == RED);
+    v.Scroll(0, 0);
+    CHECK(A.GetPosition()->x == 5 && A.GetPosition()->y == -7);
+    // a scroll box limits what is recomposed
+    RECT box = {-16, -16, 16, 16};
+    v.SetScrollBox(&box);
+    v.SetScrollBox(nullptr);
+    v.Scroll(-5, 7);
+    CHECK(A.GetPosition()->x == 0 && A.GetPosition()->y == 0 && Px(v, 0, 0) == RED && Px(v, -19, 0) == RED && Px(v, -21, 0) == BLACK);
+}
+
 void TestFlipAndContact() {
     std::printf("[flip/contact]\n");
     Fixture f;
@@ -719,6 +750,7 @@ int RunPkg1Tests(int, char**) {
     g_fail = g_checks = 0;
     TestDibData();
     TestCompose();
+    TestScroll();
     TestFlipAndContact();
     TestAnimQueue();
     TestLineTo();

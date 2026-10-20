@@ -95,15 +95,15 @@ New relative to MuShoot (ordinal, Aaron.dll address) and state in the port (the 
 
 | game | ordinal | address | name | in the port |
 |---|---|---|---|---|
-| Flounder | 47 | 0x10004343 | to be analysed | yes (declared/inline, check) |
-| Flounder | 77 | 0x10004386 | to be analysed | **no** |
-| Flounder | 138 | 0x1000ca5f | to be analysed | **no** |
-| Flounder | 226 | 0x10005791 | to be analysed | **no** |
-| Flounder | 234 | 0x10006b1a | to be analysed | **no** |
-| Flounder | 237 | 0x10004411 | to be analysed | **no** |
+| Flounder | 47 | 0x10004343 | `Node` constructor (parent, resource id, command, style) | yes, verified by Flounder Quest |
+| Flounder | 77 | 0x10004386 | `Widget::ReleaseBase` | yes (WP-2), verified by Flounder Quest |
+| Flounder | 138 | 0x1000ca5f | `Scene::AddResource` (dynamic resource, ids `0xff80xxxx`, reference counted) | yes (WP-2 + refcount fix of the Flounder port) |
+| Flounder | 226 | 0x10005791 | empty function | yes (no-op) |
+| Flounder | 234 | 0x10006b1a | empty function | yes (no-op) |
+| Flounder | 237 | 0x10004411 | empty function | yes (no-op) |
 | Flounder | 452 | 0x10006bf6 | `Timer::OnMessage` | yes (`TimerWidget.cpp`) |
-| Flounder | 488 | 0x1000445f | to be analysed | **no** |
-| Flounder | 515 | 0x10006d07 | to be analysed | yes (declared, check) |
+| Flounder | 488 | 0x1000445f | `Widget::LoadAndActivate` | yes (WP-2) |
+| Flounder | 515 | 0x10006d07 | `Timer` hide change (slot 7) | yes, fixed in the Flounder port (`Timer::OnHideChange`) |
 | Ruckus | 144 | 0x10004ed2 | to be analysed | **no** |
 | Ruckus | 529 | 0x100041ad | to be analysed | yes (declared, check) |
 | Ruckus | 576 | 0x10009639 | to be analysed | **no** |
