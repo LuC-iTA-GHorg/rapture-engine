@@ -100,7 +100,7 @@ void TextDraw(GdiCtx& ctx, const LOGFONT_LITE& f, const char* s, int len, const 
     uint32_t col = ToArgb(ctx.textColor);
     for (int y = 0; y < h; ++y)
         for (int x = 0; x < w; ++x)
-            if (px[size_t(y) * w + x] & 0x00ffffff) PutPixel(ctx, rc.left + x, rc.top + y, col);
+            if (px[size_t(y) * w + x] & 0x00ffffff) PutPixelCopy(ctx, rc.left + x, rc.top + y, col);
     SelectObject(dc, oldFont);
     DeleteObject(font);
     SelectObject(dc, oldBmp);

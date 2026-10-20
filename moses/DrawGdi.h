@@ -46,6 +46,15 @@ struct GdiCtx {
     GdiObj* selPen = nullptr;
     GdiObj* selBrush = nullptr;
     GdiObj* selFont = nullptr;
+    // limits branch additions (additive, used by the EMF player and available to every GdiCtx user; defaults = old behaviour):
+    int rop2 = 13;               // SetROP2 value, 13 = R2_COPYPEN. Applies to gdi:: shape/line drawing through PutPixel (not to PutPixelCopy)
+    bool polyWinding = false;    // SetPolyFillMode(WINDING): non-zero winding fill in gdi::Polygon instead of alternate (even-odd)
+    const uint8_t* clipMask = nullptr; // extra clip region: a pixel is visible only inside maskRect with a non-zero byte (row-major,
+    RECT maskRect{0, 0, 0, 0};         // stride = maskRect width); used for EMF clip regions (EXTSELECTCLIPRGN)
+    const int* dashPat = nullptr; // PS_USERSTYLE (7): alternating on/off lengths in pixels
+    int dashN = 0;
+    const uint32_t* brushPat = nullptr; // brushStyle 3 (BS_PATTERN): ARGB tile, repeated and aligned to the surface pixel grid
+    int brushPatW = 0, brushPatH = 0;
 };
 
 // GDI structures reduced to what the game sets.

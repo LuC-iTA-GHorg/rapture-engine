@@ -21,7 +21,11 @@ void Polyline(GdiCtx& dc, const POINT* pts, int n);
 void Polygon(GdiCtx& dc, const POINT* pts, int n);
 
 // Plot one opaque pixel (logical coordinates) honouring clip/exclude.
-void PutPixel(GdiCtx& dc, int x, int y, uint32_t argb);
+void PutPixel(GdiCtx& dc, int x, int y, uint32_t argb);       // honours clip, exclude, clip mask and dc.rop2
+// limits branch: the same without the raster operation (bitmaps, text) and a read of the surface pixel under (x, y) (false = outside the surface).
+void PutPixelCopy(GdiCtx& dc, int x, int y, uint32_t argb);
+bool GetPixel(const GdiCtx& dc, int x, int y, uint32_t& argb);
+void FillPixel(GdiCtx& dc, int x, int y); // one interior pixel with the current brush (solid / hatched / pattern)
 inline uint32_t ToArgb(COLORREF c) { return 0xff000000u | ((c & 0xff) << 16) | (c & 0xff00) | ((c >> 16) & 0xff); }
 
 // Text. `flags` are Win32 DT_* values. With DT_CALCRECT (0x400) the rectangle is only measured (rc.left/top are

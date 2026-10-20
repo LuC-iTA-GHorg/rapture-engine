@@ -376,7 +376,7 @@ int TextRect(const LOGFONT_LITE& lf, const char* s, int len, RECT& rc, u32 flags
 static void DrawGlyph(GdiCtx& dc, const Face& f, int cp, int penX, int baseY, uint32_t col, const RECT* clip) {
     auto put = [&](int x, int y) {
         if (clip && (x < clip->left || x >= clip->right || y < clip->top || y >= clip->bottom)) return;
-        PutPixel(dc, x, y, col);
+        PutPixelCopy(dc, x, y, col);
     };
     if (!f.ff) { // bitmap font
         int idx = (cp >= 32 && cp <= 126) ? cp - 32 : 31; // '?'
@@ -440,7 +440,7 @@ void TextDraw(GdiCtx& dc, const LOGFONT_LITE& lf, const char* s, int len, const 
             for (int t = 0; t < th; ++t)
                 for (int xx = x; xx < x + w; ++xx) {
                     int yy = base + 1 + t;
-                    if (!clip || (xx >= clip->left && xx < clip->right && yy >= clip->top && yy < clip->bottom)) PutPixel(dc, xx, yy, col);
+                    if (!clip || (xx >= clip->left && xx < clip->right && yy >= clip->top && yy < clip->bottom)) PutPixelCopy(dc, xx, yy, col);
                 }
         }
         y += lh;

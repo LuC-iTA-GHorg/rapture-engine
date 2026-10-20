@@ -8,21 +8,35 @@
 // GdiRaster (the same primitives CDrawRect / CDrawPoly use).  The picture frame of the metafile is mapped onto the
 // destination rectangle exactly like PlayEnhMetaFile does (reference device -> frame -> rect).
 //
-// COVERAGE of the interpreter (record types of the EMF specification, MS-EMF):
-//   supported : HEADER, EOF, SAVEDC/RESTOREDC, SETWINDOW/VIEWPORT ORG/EXT, SETMAPMODE (all modes; ISOTROPIC treated as
-//               ANISOTROPIC), SETWORLDTRANSFORM / MODIFYWORLDTRANSFORM, SETBKMODE/BKCOLOR/TEXTCOLOR/TEXTALIGN/POLYFILLMODE,
-//               CREATEPEN / EXTCREATEPEN / CREATEBRUSHINDIRECT / EXTCREATEFONTINDIRECTW / SELECTOBJECT (+stock objects) /
-//               DELETEOBJECT, MOVETOEX/LINETO, RECTANGLE/ROUNDRECT/ELLIPSE, POLYGON/POLYLINE/POLYLINETO (+16 bit forms),
-//               POLYPOLYGON/POLYPOLYLINE (+16), POLYBEZIER* (flattened), ARC/PIE/CHORD/ANGLEARC (as ellipse arcs),
-//               SETPIXELV, EXTTEXTOUTA/EXTTEXTOUTW (single line, ETO_OPAQUE background), STRETCHDIBITS / SETDIBITSTODEVICE /
-//               BITBLT / STRETCHBLT (bitmaps 1/4/8/16/24/32 bit uncompressed, SRCCOPY; PATCOPY/BLACKNESS/WHITENESS fills),
-//               INTERSECTCLIPRECT / EXCLUDECLIPRECT (one excluded rectangle), paths (BEGINPATH..FILLPATH/STROKEPATH/
-//               STROKEANDFILLPATH/SELECTCLIPPATH for polygonal figures).
-//   approximated: dashed pens are solid; pattern/hatch brushes are solid; WINDING fill is even-odd; text is one line,
-//               baseline = top + ascent of the selected font; escapement/orientation ignored.
-//   skipped (counted in Metafile::skipped()): regions (FILLRGN, FRAMERGN, PAINTRGN, EXTSELECTCLIPRGN, EXTCREATEREGION),
-//               ALPHABLEND / TRANSPARENTBLT / GRADIENTFILL, MASKBLT / PLGBLT / SETDIBCOLORTABLE, palettes, GDICOMMENT
-//               (incl. EMF+ dual files: only the EMF part is drawn), flood fills, SMALLTEXTOUT, text paths.
+// COVERAGE of the interpreter (record types of the EMF specification, MS-EMF; numbering = wingdi.h EMR_*):
+//   drawn   : HEADER, EOF, SAVEDC/RESTOREDC, SETWINDOW/VIEWPORT ORG/EXT (+ SCALE*EXT), SETMAPMODE (all modes; ISOTROPIC fits the
+//             viewport extent like GDI), SETWORLDTRANSFORM / MODIFYWORLDTRANSFORM, SETBKMODE/BKCOLOR/TEXTCOLOR/TEXTALIGN
+//             (incl. TA_UPDATECP)/POLYFILLMODE (ALTERNATE and WINDING)/ROP2 (all 16 binary raster ops)/ARCDIRECTION,
+//             CREATEPEN / EXTCREATEPEN (PS_DASH, DOT, DASHDOT, DASHDOTDOT on 1 pixel pens, PS_USERSTYLE) / CREATEBRUSHINDIRECT (solid,
+//             null, hatched HS_* with the 8x8 device-aligned hatch) / CREATEDIBPATTERNBRUSHPT / CREATEMONOBRUSH (tiled pattern,
+//             mono: 0 bits = text colour, 1 bits = background) / EXTCREATEFONTINDIRECTW (incl. escapement) / SELECTOBJECT
+//             (+stock objects) / DELETEOBJECT, MOVETOEX/LINETO, RECTANGLE/ROUNDRECT/ELLIPSE, POLYGON/POLYLINE/POLYLINETO (+16 bit
+//             forms), POLYPOLYGON/POLYPOLYLINE (+16; fill mode applied across all figures), POLYBEZIER* (flattened), POLYDRAW(+16),
+//             ARC/PIE/CHORD/ARCTO/ANGLEARC (as ellipse arcs, direction honoured), SETPIXELV, EXTFLOODFILL (border and surface),
+//             EXTTEXTOUTA/W + SMALLTEXTOUT + POLYTEXTOUTA/W (single line per string, ETO_OPAQUE rectangle, ETO_CLIPPED, per-character
+//             advances, rotated text through lfEscapement), STRETCHDIBITS / SETDIBITSTODEVICE / BITBLT / STRETCHBLT (bitmaps 1/4/8/16/24/32
+//             bit BI_RGB, 16/32 bit BI_BITFIELDS; every one of the 256 ternary raster operations, pattern = current brush),
+//             MASKBLT (ROP4 with a monochrome mask), PLGBLT (parallelogram, optional mask), ALPHABLEND (constant and per-pixel
+//             premultiplied alpha), TRANSPARENTBLT (colour key), GRADIENTFILL (horizontal / vertical rectangles and triangles),
+//             clipping: INTERSECTCLIPRECT / EXCLUDECLIPRECT (any number) / OFFSETCLIPRGN / SETMETARGN / EXTSELECTCLIPRGN (RGN_AND, OR,
+//             XOR, DIFF, COPY; regions are RDH_RECTANGLES RGNDATA in reference-device pixels) / SELECTCLIPPATH (the real path mask,
+//             not its bounding box), regions: FILLRGN / FRAMERGN / PAINTRGN / INVERTRGN, paths: BEGINPATH..ENDPATH, CLOSEFIGURE,
+//             FILLPATH / STROKEPATH / STROKEANDFILLPATH (holes follow the fill mode), WIDENPATH (the pen swept along the path),
+//             FLATTENPATH (paths are always flat here), ABORTPATH, text inside a path (glyph pixels).
+//   accepted with no effect (true colour software surface or no visible meaning): SETMAPPERFLAGS, SETCOLORADJUSTMENT, SETSTRETCHBLTMODE,
+//             SETBRUSHORGEX, SETMITERLIMIT, SETTEXTJUSTIFICATION, SETLAYOUT, palette records (CREATEPALETTE .. REALIZEPALETTE), colour
+//             space / ICM records, OpenGL (GLS*, PIXELFORMAT), DRAWESCAPE / EXTESCAPE / NAMEDESCAPE, SETLINKEDUFIS, FORCEUFIMAPPING.
+//   approximated: pen end caps and joins are square, dashes apply to polylines / polygons / rectangles / ellipses (not to wide pens
+//             with the built-in styles, as GDI), pattern brushes ignore SetBrushOrgEx, text is one line per string and rotated text uses
+//             the escapement only (the world transform rotation does not turn the glyphs), ETO_GLYPH_INDEX is not interpreted.
+//   not interpreted (counted): GDICOMMENT with EMF+ data (Metafile::emfPlusRecords(); dual EMF+/EMF files draw their EMF part), record
+//             numbers that are not defined by MS-EMF (Metafile::skipped()), bitmaps that cannot be decoded (RLE compressed, JPEG/PNG
+//             payloads, bad offsets), and BitBlt-family records whose ROP needs a source that the record does not carry.
 #pragma once
 
 #include "moses/AnimView.h"
@@ -61,12 +75,14 @@ public:
     // in skipped().
     u32 Play(GdiCtx& dc, const RECT& dest) const;
     const std::map<u32, u32>& skipped() const { return skipped_; } // record type -> times skipped (last Play)
+    u32 emfPlusRecords() const { return emfPlus_; } // EMF+ comment records met by the last Play (not interpreted; dual files draw their EMF part)
 
 private:
     std::vector<u8> data_;
     Header hdr_;
     u32 recCount_ = 0;
     mutable std::map<u32, u32> skipped_;
+    mutable u32 emfPlus_ = 0;
 };
 
 } // namespace emf

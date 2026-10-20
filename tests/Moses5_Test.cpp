@@ -405,7 +405,7 @@ void TestMeta() {
     { std::vector<u8> r; Rec(r, 38, P({2, 5, 0, 0, 0})); add(r); }    // CREATEPEN 2: PS_NULL
     { std::vector<u8> r; Rec(r, 37, P({2})); add(r); }
     { std::vector<u8> r; Rec(r, 43, P({0, 0, 99, 99, 10, 10, 60, 60})); add(r); }  // RECTANGLE
-    { std::vector<u8> r; Rec(r, 114, P({0, 0, 99, 99})); add(r); }    // ALPHABLEND: unsupported -> counted
+    { std::vector<u8> r; Rec(r, 200, P({0, 0, 99, 99})); add(r); }    // not an EMF record type: unsupported -> counted
     std::vector<u8> emf = MakeEmf(body, 6);
 
     emf::Metafile m;
@@ -424,7 +424,7 @@ void TestMeta() {
     CHECK(m.Play(s.dc, RECT{0, 0, 50, 50}) == 8);
     CHECK(s.surf.Row(10)[10] == RED && s.surf.Row(28)[28] == RED);        // 10..60 at scale 0.5 = 5..30 -> after 0.5 of 100px frame
     CHECK(s.surf.Row(2)[2] == 0 && s.surf.Row(40)[40] == 0);
-    CHECK(m.skipped().count(114) == 1);
+    CHECK(m.skipped().count(200) == 1);
 
     // inside a view: CDrawMeta + CAnimMeta
     CAnimView view;
