@@ -53,7 +53,7 @@ synthetic signals (sine + noise): 39 dB mono, 33 dB stereo. Fixed 4:1 compressio
 
 **Compact MIDI**: `SmfToCompactMidi` merges the tracks, converts ticks to milliseconds with the tempo map (same hypothesis 1 unit = 1 ms as `CompactMidiToSmf`),
 emits a delta dword only when time advances (never two in a row, none before events at the same instant) and keeps the final delta up to End-of-Track;
-sysex/meta are discarded. The MIDI of each `*fx` -> SMF -> compact comes back identical (4/4 games). If it were ever found that the delta unit is not 1 ms
+sysex/meta are discarded. The MIDI of each `*fx` -> SMF -> compact comes back identical (4/4 games). The 1 ms unit is now VERIFIED (moses.dll MIDI thread 0x10012de3, see `LIMITS.md`); if it were ever found that the delta unit is not 1 ms
 (`MidiTempoScale`), it must be applied here too (inverse).
 
 ## Results (`--rrs-test --roundtrip`)
@@ -75,4 +75,4 @@ Python: `rrs_extract.py` -> `rrs_pack.py` identical for all the archives of the 
 * Uncompressed DIBs (flag bit1 = 0) are supported neither in reading nor in writing (like `DecodeDib`).
 * Stable indices: the editor appends at the end; deleting an entry would require rewriting the ids (not provided).
 * The wave `stream_flag` (byte +0x18) cannot be deduced from the data (0/1 with no correlation with duration or archive): the editor must preserve it (`Sound::streamFlag`).
-* The unit of the MIDI deltas is still unverified (see `Midi.h`).
+* The unit of the MIDI deltas (1 ms) was verified against the original MIDI thread on 2026-10-20 (see `LIMITS.md`).

@@ -13,7 +13,7 @@ The original reads exactly four options (the whole of moses.dll and Aaron.dll wa
 | `[drawlib]` | `NoDirectDraw` | 0 | `CDrawSys::ChangeDisplayMode` returns 0 at once: no DirectDraw display-mode change | Value is read (`CDrawSys::NoDirectDraw()`), but the port has no display-mode change at all (fixed 640x480 SDL window), so there is nothing to disable; the call always reports success. |
 | `[drawlib]` | `ComposeRects` | 0 | "show recomposed rectangles" - **dead flag**: stored, never read | Read and stored, still dead. See `DebugRects` below. |
 | `[drawlib]` | `DisplayRects` | 0 | "show display rectangles" - **dead flag** | Read and stored, still dead. |
-| `[audio]` | `RemapDrums` | 0 | The MIDI thread rewrites channel 10 (drums) to channel 16 | Implemented: `MidiPrepareCompact` (platform/Midi.cpp) applies it to the compact MIDI stream before playback. |
+| `[audio]` | `RemapDrums` | 0 | The MIDI thread rewrites channel 10 (drums) to channel 16 | Implemented: the software MIDI sequencer (`platform/MidiSeq.cpp`) applies it to every message it emits, before the mute test, like the original thread; `MidiPrepareCompact` remains as an offline helper. |
 
 `RemapDrums=1`: every short MIDI message whose low nibble is 9 (channel 10) gets `| 0xf`, i.e. goes to channel 16. As in the original this
 happens **before** the muted-channel test (`MidiSetChannel`), so the mute applies to channel 16.

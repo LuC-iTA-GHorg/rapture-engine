@@ -23,7 +23,7 @@ INI_OPTIONS = [
     ('drawlib', 'NoDirectDraw', 'moses.dll 0x10009420', 'ChangeDisplayMode returns 0 at once (CDrawSys+4)', 'implemented',
      'read (WP-9); the port never changes the video mode, so ChangeDisplayMode stays 1 (docs/WP9.md)'),
     ('audio', 'RemapDrums', 'moses.dll (AUDIOSTATE+0x3a)', 'MIDI thread: channel 10 rewritten to channel 16', 'implemented',
-     'WP-9: MidiPrepareCompact remaps channel 10 to 16 before the channel mute'),
+     'WP-9 / limits: the software MIDI sequencer remaps channel 10 to 16 before the channel mute (platform/MidiSeq.cpp)'),
 ]
 
 # Resource types (docs/rrs_format.md): (type, meaning, original handler, constant in the port, status, note)
@@ -34,7 +34,7 @@ RES_TYPES = [
     (4, 'palette (RGBQUAD[n])', 'moses.dll 0x1000c180', 'RT_PALETTE', 'implemented',
      'WP-5: CResfile::load_palette -> CDibPal, loaded by CResMgr; none of the archives of the 4 games contains one'),
     (5, 'sound (ADPCM wave / MIDI / AVI ref)', 'moses.dll 0x1000c220', 'RT_SOUND', 'implemented',
-     'decoding verified (--rrs-test); real playback not verified (dummy driver in the tests)'),
+     'decoding verified (--rrs-test); waves checked through the real mixer with the SDL disk driver (--engine-test 11); MIDI through the software sequencer (--engine-test 10); not listened to'),
     (6, 'group of ids (4 byte header)', 'moses.dll 0x1000ca60', 'RT_GROUP', 'implemented', ''),
     (7, 'DIBREF (same bitmap, other hot spot)', 'moses.dll 0x1000c8e0', 'RT_DIBREF', 'implemented', ''),
     (8, 'DIBLIST', 'moses.dll 0x1000c850', 'RT_DIBLIST', 'implemented', ''),

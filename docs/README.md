@@ -169,10 +169,10 @@ start/end notifications, MIDI loops and AVI are handled in `CAudioLib::Service()
    no palettes: `Expand()` is a no-op; `bpp` and `ChangeColorDepth(16)` are accepted and ignored. `SetSurfaceColor` still receives the raw RGB555 value.
 3. **GDI** → software rasterizer (`GdiCtx` in place of `HDC`): rectangles, ellipses, polygons, text (also "rich"). `CDrawMeta` not ported.
 4. **Registry** → `.ini` (`RegKey`); **LoadLibrary** → static scene registry; **window** → SDL (`platform/Window`).
-5. **Audio**: no DirectSound/MCI/threads; `SoundCreate` takes an already-parsed `::Sound`; AVI (kind 3) is played with `PlayMovie` (blocking) instead of MCIWnd.
+5. **Audio**: no DirectSound/MCI; the only thread is the software MIDI sequencer (`platform/MidiSeq.*`, `LIMITS.md`); `SoundCreate` takes an already-parsed `::Sound`; AVI (kind 3) is played with `PlayMovie` (blocking) instead of MCIWnd.
 6. **Virtual destructor** on `CDrawObj`/`CResMgr`; per-class allocators replaced by `new/delete`.
 7. **64-bit ids** (`GetId`, `QUEUEMSG::a/b/c`, `wParam/lParam`).
-8. **Joystick**: `JoystickMgr::CountDevices()` returns 0 until the platform has a backend.
+8. **Joystick**: `platform/Joystick.cpp` (SDL2 GameController / Joystick polled to the WinMM 0..65535 form, fakes for tests); reviewed against the original and tested with SDL virtual joysticks (`LIMITS.md`, section 5).
 9. **Cursors**: `CursorMgr::SetCursor(n)` is a placeholder (only show/hide via `::Window::ShowCursor`).
 10. **Not ported**: `CFileIO`, `CObjCache/CGdiCache`, `CDibTile`, `CDrawMeta/CAnimMeta`, `ControlWin`, `PolySprite/TextSprite` (ord 18,19,21,25,26 unused), About box, CD audio (no-op).
 

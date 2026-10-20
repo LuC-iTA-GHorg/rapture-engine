@@ -56,6 +56,8 @@ copies, by `setup-build-env.ps1` (paths are remembered in `.buildtools.json`, no
 is installed on the system; Visual Studio is not needed (MinGW-w64 + CMake + SDL2). From
 PowerShell: `& .\engine\tools\build-engine.bat test`. The CMake option `RAPTURE_BUILD_TESTS` (ON)
 compiles the tests into the library (`RAPTURE_WITH_TESTS=1`) and, standalone, `rapture_tests`.
+`RAPTURE_FORCE_PORTABLE=ON` (or `build-engine.bat portable test`) compiles with every Win32-specific path off (no winmm, no GDI text, no `%APPDATA%`), as on Linux/macOS, even on
+MinGW; see `docs/LIMITS.md` for what was verified in that configuration and what was not (no real Linux build yet).
 
 Antivirus software may flag freshly built executables (false positive): add an exclusion for
 your build folder if needed.

@@ -44,8 +44,8 @@ keep the build green (`engine/tools/build-engine.bat test`), add tests, **do not
 | WP-7 (**DONE 2026-10-20**, see `docs/WP7.md`) | medium | **Writing `.rrs` archives** (the editor must be able to save them): `Rrs` is read-only; add a writer (index, pool, keys, RLE DIBs, ADPCM/MIDI waves) with byte-for-byte round trip on the 4 games | `platform/Rrs.*`, `tools/rrs_extract.py` | `--rrs-test --roundtrip` green |
 | WP-8 | medium | **Autoplay for all games**: `autoplay::Extension` extensions and scripts for Flying, Flounder, Ruckus | game repo | one script per game up to level 1 |
 | WP-9 (**DONE 2026-10-20**, see `docs/WP9.md, docs/RAPTURE_INI.md`) | low | **`rapture.ini`**: `NoDirectDraw`, `RemapDrums` (MIDI backend), dead flags `ComposeRects`/`DisplayRects` as an optional debug overlay; `IniGetInt`/`IniWriteInt`/`IniWriteString` parser (0x1000ff40/ff60/ffa0) | `moses/*`, `aaron/RegKey.*` | 4 options `implemented` |
-| WP-10 | low | **Real audio**: by-ear check of sounds, voice, MIDI (autoplay uses the dummy driver); portable MIDI backend | `platform/Audio*`, `Midi*` | check with the user present |
-| WP-11 | low | **Joystick, CD audio, About box** and the other PARTIAL entries of the reference game's bug/debug list | `aaron/Input*`, `moses/AudioLib*` | PARTIAL entries closed |
+| WP-10 (**PARTLY DONE 2026-10-20**, branch `limits`, see `docs/LIMITS.md`) | low | **Real audio**: software MIDI sequencer with live mute/tempo and a backend interface (winmm / no-op / recording) DONE; real-mixer check without speakers through the SDL disk driver DONE (`--engine-test 11`, `tools/audio_disk_check.py`); **by-ear check of sounds, voice and MIDI still needs the user** | `platform/Audio*`, `Midi*` | check with the user present |
+| WP-11 (**joystick part DONE 2026-10-20**, see `docs/LIMITS.md` section 5) | low | **Joystick, CD audio, About box** and the other PARTIAL entries of the reference game's bug/debug list; joystick reviewed against the original and tested with SDL virtual devices, real hardware still needs the user | `aaron/Input*`, `moses/AudioLib*` | PARTIAL entries closed |
 | WP-12 | low | **Editor** (after WP-1..7): SDL2 app on top of the `rapture` library to browse archives, preview sprites/animations, edit and save | new folder `editor/` | prototype |
 
 Recommended order: WP-1 and WP-2 (in parallel, different files) -> WP-3 -> WP-6/WP-7 -> WP-4/WP-5 -> the rest. After every package: `python -I engine/tools/engine_coverage.py`,
@@ -129,7 +129,7 @@ Which opcodes the tables of each game use has not been measured yet (WP-6).
 | 2 | DIB (RLE 16 bit) | `moses.dll 0x1000c0d0` | `RT_DIB` | implemented |  |
 | 3 | raw blob | `moses.dll 0x1000c52e` | `RT_BLOB` | implemented |  |
 | 4 | palette (RGBQUAD[n]) | `moses.dll 0x1000c180` | `RT_PALETTE` | implemented | WP-5: CResfile::load_palette -> CDibPal, loaded by CResMgr; none of the archives of the 4 games contains one |
-| 5 | sound (ADPCM wave / MIDI / AVI ref) | `moses.dll 0x1000c220` | `RT_SOUND` | implemented | decoding verified (--rrs-test); real playback not verified (dummy driver in the tests) |
+| 5 | sound (ADPCM wave / MIDI / AVI ref) | `moses.dll 0x1000c220` | `RT_SOUND` | implemented | decoding verified (--rrs-test); waves checked through the real mixer with the SDL disk driver (--engine-test 11); MIDI through the software sequencer (--engine-test 10); not listened to |
 | 6 | group of ids (4 byte header) | `moses.dll 0x1000ca60` | `RT_GROUP` | implemented |  |
 | 7 | DIBREF (same bitmap, other hot spot) | `moses.dll 0x1000c8e0` | `RT_DIBREF` | implemented |  |
 | 8 | DIBLIST | `moses.dll 0x1000c850` | `RT_DIBLIST` | implemented |  |
@@ -144,7 +144,7 @@ Which opcodes the tables of each game use has not been measured yet (WP-6).
 | `[drawlib]` | `ComposeRects` | `moses.dll 0x10009360` | debug flag "show recomposed rectangles" (CDrawSys+8) | implemented | read as in the original and left dead as in the original; optional port overlay: [port] DebugRects=1 or --debug-rects (docs/RAPTURE_INI.md) |
 | `[drawlib]` | `DisplayRects` | `moses.dll 0x10009360` | debug flag "show display rectangles" (CDrawSys+0xc) | implemented | read and dead as in the original; see the DebugRects overlay |
 | `[drawlib]` | `NoDirectDraw` | `moses.dll 0x10009420` | ChangeDisplayMode returns 0 at once (CDrawSys+4) | implemented | read (WP-9); the port never changes the video mode, so ChangeDisplayMode stays 1 (docs/WP9.md) |
-| `[audio]` | `RemapDrums` | `moses.dll (AUDIOSTATE+0x3a)` | MIDI thread: channel 10 rewritten to channel 16 | implemented | WP-9: MidiPrepareCompact remaps channel 10 to 16 before the channel mute |
+| `[audio]` | `RemapDrums` | `moses.dll (AUDIOSTATE+0x3a)` | MIDI thread: channel 10 rewritten to channel 16 | implemented | WP-9 / limits: the software MIDI sequencer remaps channel 10 to 16 before the channel mute (platform/MidiSeq.cpp) |
 
 <!-- END GENERATED -->
 
@@ -157,3 +157,14 @@ Which opcodes the tables of each game use has not been measured yet (WP-6).
 * The QUEUEMSG opcodes are read from `engine/moses/QueueMsg.h` and searched for in the `.cpp` files of `engine/moses`.
 * Reverse-engineering data (notes `moses.md`, `aaron.md`, `rrs_format.md`, `function_names.tsv`, analysis output per binary; `exports.txt` is the source of the names for this table)
   is kept outside this repository and is optional.
+
+## 6. Known limits, state after the `limits` branch (2026-10-20; details in `LIMITS.md`)
+
+| limit | state |
+|---|---|
+| MIDI without live mute / tempo, delta unit assumed | **fixed**: unit verified (1 ms, moses MIDI thread 0x10012de3); software sequencer with live mute, live tempo, loop, stop, the original Pause = stop + restart; winmm backend on Windows, no-op backend elsewhere, recording backend + virtual clock in the tests (`--engine-test 10`) |
+| real audio never checked | **checked without speakers**: SDL `disk` driver capture, sample-exact for 22050 Hz mono waves (`--engine-test 11`, `tools/audio_disk_check.py`); **not listened to**; MIDI is not in the capture; CD audio only as WAV folders |
+| unsupported EMF records | **fixed** except EMF+ and undecodable bitmaps (list in `DrawMeta.h`, 86 tests) |
+| non-Windows build never tried | **MinGW `RAPTURE_FORCE_PORTABLE=ON` builds and passes every suite**; two real porting bugs fixed (path separators, settings folder); **no real Linux/macOS build** (no WSL distribution on the machine) |
+| joystick only with fake devices | **reviewed** against the original (identical logic) and tested through SDL virtual joysticks end to end; **real hardware not tried** |
+| physical CD drives (MCI cdaudio) | unchanged: not reproduced |

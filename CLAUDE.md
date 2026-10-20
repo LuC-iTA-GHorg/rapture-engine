@@ -20,6 +20,7 @@ repository is the `engine/` submodule of one repository per game (e.g. `mushoot-
   (in the game repository). In the documents MuShoot appears only as the "reference game".
 - Prefer verifying with `--autoplay` (hidden window, scripted input, `dummy` audio) and the
   headless tests; `--movie` and a normal start open a visible window.
+- Optional Win32 backends are guarded by `RAPTURE_WIN32` (`platform/Config.h`), never by `_WIN32`; the build must also pass with `RAPTURE_FORCE_PORTABLE=ON`.
 - No `<windows.h>` in the `.cpp` files of `moses/`, `aaron/`, `arcade/`, `host/` (only in the
   `*_win.cpp` files of `platform/`): it redefines `PostMessage`, `LoadString`... and breaks linking.
 - Keep the build green: `engine\tools\build-engine.bat test` before every commit. Public headers:
@@ -27,7 +28,7 @@ repository is the `engine/` submodule of one repository per game (e.g. `mushoot-
 
 ## Commands
 - `engine\tools\build-engine.bat [test|clean]` – standalone engine build (`<root>\build-engine\`);
-  tests without game data: `--engine-test 1,3,4,9`, `--game-test arcade|host`.
+  tests without game data: `--engine-test 1,3,4,9,10,11`, `--game-test arcade|host`; `build-engine.bat portable test` = the same with `-DRAPTURE_FORCE_PORTABLE=ON`.
 - As a submodule the game repository builds everything with its own `build.bat`; the full tests
   are run from the **game folder** (the one with the `*.rrs`): `<game>.exe --engine-test 1|2 .|3|4`,
   `--game-test arcade|host|<game>`, `--rrs-test`.

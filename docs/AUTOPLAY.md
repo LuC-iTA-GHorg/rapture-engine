@@ -112,4 +112,4 @@ asks for).
   the script with the disk driver at `--fast 1` (`--fast N` scales the mixer position, so the capture would be N times too short) and reports length,
   peak and rms of the capture. Reference run (hit_hun.txt): 34.1 s captured, audible from frame 1036, peak 32768 (clipping while the sounds overlap), rms ~4000.
 * Playing a capture back (`ffplay -f s16le -ar 22050 -ac 2 capture.raw`, Audacity "Import raw data") is the way to **listen** to a run later.
-* MIDI is not part of the capture (it goes to the MIDI sink, see `docs/MIDI.md`): in the headless tests the recording sink checks the events.
+* MIDI is not part of the capture (it goes to the MIDI sink, see `docs/LIMITS.md`): in the headless tests the recording sink checks the events.

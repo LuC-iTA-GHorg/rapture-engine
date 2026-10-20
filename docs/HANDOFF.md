@@ -68,6 +68,21 @@ WP-7 (`.rrs` writing: byte-for-byte round trip of all 20 archives of the 4 games
 are merged into `master`. `docs/COMPLETENESS.md`: moses 335 implemented + 9 n.a., Aaron 517 + 38 n.a., opcodes 26/26, resource types 11/11, ini options 4/4.
 Green tests: `--engine-test 1` (223 + Moses5 156), `2 .`, `3` (549), `4` (176), `9` (63), `--game-test arcade|host|mushoot`, `--rrs-test . --roundtrip`, autoplay
 `hit_hun`, `options_menu`, `level1_clear`, `gameover`, `hawk_horseman` (`--fast 4`).
-Known limits: MIDI without live mute/tempo (a software sequencer is needed), some EMF records unsupported, physical CDs unsupported, non-Windows build untried,
+Known limits (state of 2026-10-19; MIDI sequencer, EMF records, portable build and joystick tests were done on branch `limits` on 2026-10-20, see the update below and `LIMITS.md`): MIDI without live mute/tempo (a software sequencer is needed), some EMF records unsupported, physical CDs unsupported, non-Windows build untried,
 joystick tried only with fake devices; details in `docs/WP4.md`, `WP5.md`, `WP7.md`, `WP9.md`.
 Next: porting the other games (WP-3, WP-8).
+
+## Update 2026-10-20 (branch `limits`): the known limits
+
+Branch `limits` of this repository (not pushed, not merged; the game repository still points at `master`). Full account in **`docs/LIMITS.md`**.
+
+* **MIDI**: software sequencer (`platform/MidiSeq.*`, `Midi.*`): the delta unit is 1 ms (verified in the moses MIDI thread), live mute (incl. the drum remap 10 -> 16), live tempo with the original arithmetic, loop,
+  stop, Pause/Activate = stop + restart from the beginning (as the original). Backends: winmm `midiOutShortMsg` (`Midi_win.cpp`), no-op/logging elsewhere, recording + virtual clock for tests.
+* **Real audio without speakers**: `--engine-test 11 [GAME_FOLDER]`, `tools/audio_disk_check.py`, SDL `disk` driver, `--autoplay` keeps `SDL_AUDIODRIVER=disk` (see `AUTOPLAY.md`, last section).
+  Do not set `SDL_DISKAUDIODELAY` (SDL 2.32 on Windows names the file after it).
+* **EMF**: all record types of MS-EMF except EMF+ and undecodable bitmaps (`Emf_Test.cpp`, 86 checks).
+* **Portable**: `-DRAPTURE_FORCE_PORTABLE=ON` / `build-engine.bat portable test`; `RAPTURE_WIN32` (`platform/Config.h`) guards every optional Win32 backend. No WSL distribution here: no real Linux build yet.
+* **Joystick**: reviewed against the original, SDL virtual-device tests, background polling hint.
+* New tests: `--engine-test 10` (MIDI sequencer 160+, EMF 86, joystick 58, platform 2/5) and `--engine-test 11` (disk audio, 58 checks with the game folder). `--engine-test 3` now has 562 checks (+13, virtual joystick chain). Everything else unchanged:
+  `1` 223 + Moses5 156, `2 .` OK on 5 archives (1934 records), `4` 176, `9` 63, `--game-test arcade` 233 / `host` 172 / `mushoot` 145, `--rrs-test . --roundtrip` OK. Same results in the `RAPTURE_FORCE_PORTABLE` build.
+* **Needs the user**: listening to sounds/voices/MIDI on real speakers and a real synthesiser, a real gamepad, a real Linux/macOS build (WSL or a Linux box), a Windows reference run of the EMF renderer against GDI.
