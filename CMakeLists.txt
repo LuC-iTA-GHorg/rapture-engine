@@ -83,11 +83,15 @@ endif()
 # rapture_add_win32_resources(): icon (extracted at configure time from the user's own original exe), version info, manifest.
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/RaptureWin32Resources.cmake)
 
-# Helper for the executables of a game (and of the standalone test build): copy SDL2.dll next to the exe on Windows.
+# Helper for the executables of a game (and of the standalone test build): copy SDL2.dll next to the exe on Windows,
+# plus the toolchain runtime DLLs that -static-libgcc/-static-libstdc++ cannot embed (the MCF thread model of WinLibs
+# links libmcfgthread-2.dll dynamically), so the exe also starts without MinGW on the PATH.
 function(rapture_copy_sdl2_dll target)
     if(WIN32)
+        get_filename_component(cxx_bin "${CMAKE_CXX_COMPILER}" DIRECTORY)
+        file(GLOB RAPTURE_TOOLCHAIN_DLLS "${cxx_bin}/libmcfgthread-*.dll" "${cxx_bin}/libwinpthread-*.dll")
         add_custom_command(TARGET ${target} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:SDL2::SDL2> $<TARGET_FILE_DIR:${target}>)
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:SDL2::SDL2> ${RAPTURE_TOOLCHAIN_DLLS} $<TARGET_FILE_DIR:${target}>)
     endif()
 endfunction()
 
