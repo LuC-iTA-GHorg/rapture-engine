@@ -9,6 +9,7 @@
 #include "aaron/Scene.h"
 #include "aaron/Sprites.h"
 #include "platform/Joystick.h"
+#include "tests/VirtualJoy.h"
 
 #include <cstdio>
 #include <cstring>
@@ -362,6 +363,71 @@ void test_input_joystick() {
     app.Joystick(1)->Dispatch(MMSG_JOY2MOVE, 0, 0);
 }
 
+// ---- the same chain with a real SDL device: virtual joystick -> platform/Joystick -> JoystickDev -> JoystickSource -> Controller -----------
+void test_input_joystick_sdl() {
+#ifdef RAPTURE_HAVE_VIRTUAL_JOY
+    std::puts("[wp4 joystick through an SDL virtual device]");
+    pjoy::ClearFakes();
+    pjoy::Shutdown();
+    VirtualJoy dev;
+    if (!dev.Attach(2, 4, 1) || SDL_NumJoysticks() != 1) {
+        std::puts("  SKIP: no SDL virtual joystick (or a real joystick is attached)");
+        return;
+    }
+    g_in.clear();
+    Application app("JoySdl", static_cast<const char*>(nullptr), 0);
+    RegisterScene("JoySdl.DLL", "CreateScene", &CreateAppScene);
+    Module* m = app.GetModule("JoySdl.DLL", "CreateScene", nullptr);
+    CHECK(m && app.LoadSceneNow(m, 0));
+    Scene* sc = app.GetScene();
+    CHECK(JoystickMgr::CountDevices() == 1 && JoystickDev::Probe(0) && !JoystickDev::Probe(1));
+    Controller* ctl = sc->CreateController(3, 4);
+    JoystickSource* js = new JoystickSource(ctl, 0x8000);
+    ctl->EnableSource(SRC_JOYSTICK, 3);
+    CHECK(js->DeviceId() == 0 && app.Joystick(0)->ListenerCount() == 1);
+    app.Activate(true);
+    CHECK(app.Joystick(0)->Capturing());
+    app.Joystick(0)->Poll(1000, true);              // the SDL centre is 32768: inside the dead zone, nothing happens
+    CHECK(g_in.empty());
+    dev.Axis(0, 32767);                              // stick fully right
+    app.Joystick(0)->Poll(1010);
+    CHECK(g_in.size() == 1 && g_in[0].code == 4 && g_in[0].user == 4);
+    dev.Axis(0, 0);
+    dev.Axis(1, 32767);                              // fully down
+    app.Joystick(0)->Poll(1020);
+    CHECK(g_in.size() >= 2 && g_in.back().code == 2);
+    dev.Axis(1, 0);
+    dev.Button(0, true);                             // button 1 -> IN_BTN1
+    app.Joystick(0)->Poll(1030);
+    bool down = false;
+    for (auto& e : g_in) if (e.code == 0x10) down = true;
+    CHECK(down);
+    dev.Button(0, false);
+    app.Joystick(0)->Poll(1040);
+    bool up = false;
+    for (auto& e : g_in) if (e.code == (0x10u | IN_RELEASE)) up = true;
+    CHECK(up);
+    // hot-unplug while captured: no messages, no crash; the capture stays armed
+    size_t before = g_in.size();
+    dev.Detach();
+    app.Joystick(0)->Poll(1050);
+    app.Joystick(0)->Poll(1060);
+    CHECK(g_in.size() == before);
+    CHECK(JoystickMgr::CountDevices() == 0 && !JoystickDev::Probe(0));
+    // plugged in again: the stick works again after the capture is re-armed (pause / resume of the application)
+    VirtualJoy again;
+    CHECK(again.Attach(2, 4, 1));
+    app.PauseApp(true);
+    app.PauseApp(false);
+    again.Axis(0, 32767);
+    app.Joystick(0)->Poll(1070, true);
+    CHECK(g_in.size() > before && g_in.back().code == 4);
+    pjoy::Shutdown();
+#else
+    std::puts("[wp4 joystick through an SDL virtual device] SKIP (SDL < 2.0.14)");
+#endif
+}
+
 // ---- managers -----------------------------------------------------------------------------------------------------------------
 struct FW : Node {
     int focus = 0, keys = 0, pressed = 0;
@@ -571,6 +637,7 @@ int RunAaronAppTests(int* checks) {
     test_path_module();
     test_application_window();
     test_input_joystick();
+    test_input_joystick_sdl();
     test_managers();
     moses::CAnimView::SetTimeSource(nullptr);
     std::printf("aaron-wp4 app: %d checks, %d failures\n", g_checks, g_fail);

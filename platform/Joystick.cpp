@@ -20,6 +20,9 @@ State g_fake[kMaxDevices];
 
 bool ensure_init() {
     if (g_init) return true;
+    // WinMM joyGetPos reads the device whether or not the window has the focus (Aaron itself stops the capture while the application is inactive):
+    // keep that behaviour instead of letting SDL drop the input of an unfocused window.
+    SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
     if (SDL_InitSubSystem(SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER) != 0) return false;
     SDL_JoystickEventState(SDL_DISABLE); // polled: no event queue traffic
     SDL_GameControllerEventState(SDL_DISABLE);

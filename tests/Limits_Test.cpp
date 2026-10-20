@@ -8,6 +8,7 @@ int RunPkg10Tests(int, char**) {
     int fail = 0;
     fail += RunMidiSeqTests();
     fail += RunEmfTests();
+    fail += RunJoystickTests();
     fail += RunPortableTests();
     std::printf("== limits: %d failures ==\n", fail);
     return fail ? 1 : 0;
