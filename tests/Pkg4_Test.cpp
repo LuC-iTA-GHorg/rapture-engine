@@ -253,11 +253,11 @@ void TestDialog() {
     sc.Cursor().Capture(ok); // regression: manager references to a widget deleted with its dialog must be dropped
     CHECK(dlg->OnKey(WMSG_KEYDOWN, AVK_ESCAPE, 0) == 1);
     CHECK(sc.Cursor().Captured() == nullptr && sc.Cursor().Hovered() == nullptr);
+    CHECK(sc.Focus().GetFocus() == nullptr);   // focus restored on close (checked before the click: a click may legitimately focus `under`, which depends on the game's pictures)
     sc.HandleMouse(WMSG_LBUTTONDOWN, 0, 0, 1); // first click after the dialog closed (used to crash on a stale hover_)
     sc.HandleMouse(WMSG_LBUTTONUP, 0, 0, 0);
     CHECK(under->DisableCount() == 0);
     CHECK(sc.Accelerators().Translate(&sc, AVK_ESCAPE, 0)); // ... and restored on close
-    CHECK(sc.Focus().GetFocus() == nullptr);
     CHECK(sc.RootWidget()->FirstChild() == under && sc.RootWidget()->LastChild() == under);
 
     // nested dialogs: Close(1, 1) closes the whole stack
