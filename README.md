@@ -1,123 +1,133 @@
-# rapture-engine – unofficial SDL2 port of the Rapture Technologies engine
+# rapture-engine – unofficial SDL2 reimplementation of the Rapture Technologies engine
 
 A from-scratch reimplementation, in portable C++17 on top of SDL2, of the **Rapture Technologies
-engine** (`moses.dll` – drawing, animation, `.rrs` resources, audio – and `Aaron.dll` – application
-framework, 1999) used by four of Disney Interactive's *Hot Shots* games, plus the shared "Arcade"
-library (scores, lives, sequences, pop-ups) and the host program (title screen, Options menu).
-Every function follows the behaviour of the original, and its comment carries the **original
-address** (`// moses.dll 0x10006e80`, `// Aaron ord 539 0x1000de09`) so that coverage can be measured.
+engine** (1999) used by four of Disney Interactive's *Hot Shots* games: `moses.dll` (drawing,
+animation, `.rrs` resources, audio) and `Aaron.dll` (application framework), plus the shared
+"Arcade" library (scores, lives, sequences, pop-ups) and the host program (title screen, Options
+menu). Every function follows the behaviour of the original, and its comment carries the
+**original address** (`// moses.dll 0x10006e80`, `// Aaron ord 539 0x1000de09`) so that coverage
+can be measured.
 
-> **You need your own copy of the original games.** This repository contains **no game data, no
-> original code and no original assets**: only the engine written for this project and the tools
-> that read the files of your own copy. See [NOTICE.md](NOTICE.md).
+> **Unofficial fan project, for preservation and interoperability.** Not affiliated with or
+> endorsed by The Walt Disney Company or Rapture Technologies. This repository contains **no game
+> data, no original code and no decompiled code**: only the engine written for this project and
+> tools that read the files of *your own copy* of the games. See [NOTICE.md](NOTICE.md).
 
-## Games that use it
+## Status
 
-`moses.dll` and `Aaron.dll` are **byte-identical** in these 4 games; the host executable is the
-same program with a few different strings/ids (`HostConfig`), and it contains the Arcade library.
+The engine is **complete**: every `moses.dll` export (335 implemented, 9 not applicable), every
+`Aaron.dll` ordinal (517 implemented, 38 not applicable), all 26 animation-queue (`QUEUEMSG`)
+opcodes, all 11 `.rrs` resource types (including writing, with a byte-identical round trip of
+the archives of the four games) and all 4 `rapture.ini` options are in place and covered by
+headless tests. Per-item status: [docs/COMPLETENESS.md](docs/COMPLETENESS.md); known limits
+(software MIDI sequencer, EMF renderer, disk-audio verification, joystick tests):
+[docs/LIMITS.md](docs/LIMITS.md).
 
-| Game | Port repository | Status |
-|---|---|---|
-| Disney's MuShoot (Mushu) | `mushoot-rapture-port` | playable, reference game |
-| Flying Frenzy | (to be created, `tools/new-game.ps1`) | every export/ordinal it imports is implemented (not yet ported) |
-| Flounder Quest | (to be created) | every export/ordinal it imports is implemented (not yet ported) |
-| Rooftop Ruckus | (to be created) | every export/ordinal it imports is implemented (not yet ported) |
+The four games run on it: Disney's MuShoot, Flying Frenzy, Flounder Quest and Rooftop Ruckus.
+Each game port is a separate, **private** repository that uses this one as a git submodule and
+contains only that game's own code; those ports are not distributed, and running one requires the
+original game files from your own copy. This repository is the shared part, and is useful on its
+own as a library, a test suite and documentation of the engine and of the `.rrs` format.
 
-Each game lives in its own repository that uses this one as a git submodule (`engine/`). Naming
-convention: `rapture-engine` + `<game>-rapture-port` (the other engine family:
-`7thlevel-engine` + `<game>-7thlevel-port`).
+Platform: developed and tested on **Windows** only (MinGW-w64). A `RAPTURE_FORCE_PORTABLE` build
+exists that disables every Win32-specific path, but Linux and macOS are untested and not a goal.
+
+## Requirements
+
+Windows, PowerShell and Git. Nothing is installed on the system and Visual Studio is not needed:
+`tools/setup-build-env.ps1` finds, or downloads as portable copies, MinGW-w64, CMake and SDL2
+(locations are remembered in `.buildtools.json`, which is not in git). Python 3 is needed only for
+the helper scripts in `tools/`.
+
+## Build and test
+
+```
+tools\build-engine.bat                  build the library `rapture` and the test executable `rapture_tests`
+tools\build-engine.bat test             ... and run the tests that need no game data
+tools\build-engine.bat portable test    the same with every Win32-specific path off
+tools\build-engine.bat clean
+```
+
+The output goes to `build-engine\` in the root folder: the folder that contains `engine\` when
+this repository is a game's submodule, otherwise this folder. The test run executes
+`--engine-test 1,3,4,9,10,11` and `--game-test arcade|host`. The tests that read original game
+files (`--engine-test 2`, `--rrs-test`, `--engine-test 11 GAME_FOLDER`, the per-game suites) are
+run with a game port's executable from the folder holding your own copy of the game files.
+
+`rapture_tests.exe` is a GUI-subsystem program, so to capture its output use
+`Start-Process -NoNewWindow -Wait -RedirectStandardOutput out.txt ...` from PowerShell. Antivirus
+software may flag freshly built executables (false positive): add an exclusion for the build
+folder if needed. The CMake option `RAPTURE_BUILD_TESTS` (ON by default) compiles the tests in.
+
+## Using it for a game
+
+```
+git submodule add https://github.com/LuC-iTA-GHorg/rapture-engine.git engine
+git clone --recurse-submodules <game repository>
+```
+
+`tools/new-game.ps1 -GameDir <game folder> -Name <name>` creates the skeleton of a new game
+repository with this one as a submodule. In the game's `CMakeLists.txt`: `add_subdirectory(engine)`,
+`target_link_libraries(<game> PRIVATE rapture SDL2::SDL2main)` and `rapture_copy_sdl2_dll(<game>)`.
+The game's `main.cpp` is one line: `return rapture::HostMain(argc, argv, <Game>HostConfig());`.
+
+Everything that differs between games lives in a `rapture::HostConfig` ([host/HostConfig.h](host/HostConfig.h)):
+product name, string table, settings folder and `.ini`, archive and data file names, scene entry
+point, game-specific tests and autoplay extension. The engine itself contains no game name.
+Playbook: [docs/REUSE.md](docs/REUSE.md), [docs/HOST.md](docs/HOST.md).
+
+Changes to the engine are committed inside `engine/` (on `master`, not a detached HEAD) and pushed;
+then the game repository commits the new submodule pointer.
+
+## Command line
+
+Programs built on `HostMain` (see [host/HostMain.h](host/HostMain.h)) accept:
+`--autoplay SCRIPT [--outdir DIR] [--fast N|max]`, `--settings FILE.ini`, `--selftest`,
+`--rrs-test [DIR] [--roundtrip] [--dump OUT]`, `--engine-test N`, `--game-test arcade|host|<name>`,
+`--movie FILE.avi`.
+
+`--autoplay` runs the real game with a hidden window, no real input, `dummy` audio and a temporary
+settings file, driven by a text script (`wait`, `waitfor`, `click`, `key`, `fire`, `shot` = PNG,
+`log`...). Guide: [docs/AUTOPLAY.md](docs/AUTOPLAY.md).
+
+Two helper scripts work on `.rrs` archives from your own game folder: `tools/rrs_extract.py` and
+`tools/rrs_pack.py`.
 
 ## Layout
 
 | Folder | Contents |
 |---|---|
-| `platform/` | replacements for Win32/GDI/DirectX/WinMM: SDL2 window, ARGB32 bitmaps, audio mixer, ADPCM, MIDI, AVI (MS Video 1), `.rrs` reader/writer |
-| `moses/` | `moses.dll` rewritten (namespace `moses`): `CDrawView/CDrawObj`, `CAnimView/CAnimObj`, `QUEUEMSG`, `CResMgr`, `CAudioLib`, `CMem`... |
+| `platform/` | replacements for Win32/GDI/DirectX/WinMM: SDL2 window, ARGB32 bitmaps, audio mixer, ADPCM, MIDI sequencer, AVI (MS Video 1), EMF, `.rrs` reader/writer |
+| `moses/` | `moses.dll` rewritten (namespace `moses`): `CDrawView/CDrawObj`, `CAnimView/CAnimObj`, `QUEUEMSG`, `CResMgr`, `CAudioLib`... |
 | `aaron/` | `Aaron.dll` rewritten (namespace `aaron`): `Application`, `Scene`, `Widget`, sprites, input, registry (backed by an `.ini` file)... |
 | `arcade/` | the "Arcade" framework: `CGameBase`, `CArcadeGame`, players, properties, events/sequences, HUD, high scores |
-| `host/` | the host executable: `HostApp`, `TitleScene`, pop-ups (Options, New game, Save...), `HostMain`, **`HostConfig`** |
-| `autoplay/` | `--autoplay`: the game driven by a script, hidden window, no real input |
-| `tests/` | headless tests of packages 1..4, Arcade, host, `.rrs` decoding |
-| `tools/` | `build-engine.bat`, `setup-build-env.ps1`, `engine_coverage.py`, `new-game.ps1`, `rrs_extract.py`, `rrs_pack.py`, `extract_host_strings.py` |
+| `host/` | the host executable: `HostApp`, `TitleScene`, pop-ups (Options, New game, Save...), `HostMain`, `HostConfig` |
+| `autoplay/` | the scripted `--autoplay` driver |
+| `tests/` | headless tests |
+| `tools/` | build scripts, `engine_coverage.py`, `new-game.ps1`, `rrs_extract.py`, `rrs_pack.py`, `extract_host_strings.py`... |
 | `docs/` | documentation (below) |
 | `third_party/` | `stb_truetype` (MIT / public domain) |
-
-## Building and testing the engine alone
-
-```
-engine\tools\build-engine.bat          configure and build into <root>\build-engine\ (library `rapture` + executable `rapture_tests`)
-engine\tools\build-engine.bat test     ... and run the tests that need no game data (--engine-test 1,3,4,9, --game-test arcade|host)
-engine\tools\build-engine.bat clean
-```
-
-`<root>` is the folder that contains `engine\` (a game repository) or, for a clone of the engine
-alone, the engine folder itself. Compiler, CMake and SDL2 are found, or downloaded as portable
-copies, by `setup-build-env.ps1` (paths are remembered in `.buildtools.json`, not in git). Nothing
-is installed on the system; Visual Studio is not needed (MinGW-w64 + CMake + SDL2). From
-PowerShell: `& .\engine\tools\build-engine.bat test`. The CMake option `RAPTURE_BUILD_TESTS` (ON)
-compiles the tests into the library (`RAPTURE_WITH_TESTS=1`) and, standalone, `rapture_tests`.
-`RAPTURE_FORCE_PORTABLE=ON` (or `build-engine.bat portable test`) compiles with every Win32-specific path off (no winmm, no GDI text, no `%APPDATA%`), as on Linux/macOS, even on
-MinGW; see `docs/LIMITS.md` for what was verified in that configuration and what was not (no real Linux build yet).
-
-Antivirus software may flag freshly built executables (false positive): add an exclusion for
-your build folder if needed.
-
-## Using it from a game (submodule)
-
-```
-git submodule add https://github.com/LuC-iTA-GHorg/rapture-engine.git engine     # or: engine\tools\new-game.ps1
-git clone --recurse-submodules <game repository>
-```
-
-In the game's `CMakeLists.txt`: `add_subdirectory(engine)`, then
-`target_link_libraries(<game> PRIVATE rapture SDL2::SDL2main)` and `rapture_copy_sdl2_dll(<game>)`.
-The game's `main.cpp` is one line: `return rapture::HostMain(argc, argv, <Game>HostConfig());`.
-Changes to the engine are committed **inside** `engine/` (branch `master`, not a detached HEAD)
-and pushed; then the game repository commits the new submodule pointer.
-
-## `HostConfig` (`host/HostConfig.h`)
-
-A struct of constants that a game compiles into `game/HostConfig<Game>.cpp`: product name, title,
-the host executable's string table (generated from the user's own executable by
-`tools/extract_host_strings.py`), title/registry-key string ids, settings folder and `.ini`
-file, scene DLL and entry point (`CreateScene`), title sprite id, archive names, data and movie
-files, `ArcadeGameDef`, the function that creates the game scene, game-specific tests
-(`--game-test <name>`) and the `--autoplay` extension. Details and values measured for the 4 games:
-`docs/REUSE.md` section 1.3, `docs/HOST.md`.
-
-## Command line (`host/HostMain.h`)
-
-`<game>.exe` (play), `--autoplay SCRIPT [--outdir DIR] [--fast N|max]`, `--settings FILE.ini`,
-`--selftest`, `--rrs-test [DIR] [--dump OUT]`, `--engine-test N`, `--game-test arcade|host|<name>`,
-`--movie FILE.avi` (opens a window). The programs are GUI-subsystem executables: to read their
-output use `Start-Process -NoNewWindow -Wait -RedirectStandardOutput`.
-
-## Autoplay
-
-`--autoplay SCRIPT` runs the real game with a hidden window and input from a text script (`wait`,
-`waitfor`, `click`, `key`, `button`, `fire`, `shot` = PNG, `log`...), `dummy` audio and settings in a
-temporary `.ini`; `--fast N` scales the game clock. Guide: `docs/AUTOPLAY.md`.
 
 ## Documentation
 
 | File | Contents |
 |---|---|
-| `CLAUDE.md` | working rules for contributors (human or assistant) |
-| `docs/HANDOFF.md` | status, what is verified, what to do |
-| `docs/COMPLETENESS.md` | plan for a complete engine: status of every export/ordinal/opcode/type/option, work packages |
-| `docs/README.md` | architecture, original-to-port map, conventions |
-| `docs/REUSE.md` | how to reuse the engine for a new game (playbook, phases) |
-| `docs/AUTOPLAY.md`, `docs/HOST.md`, `docs/ARCADE.md` | `--autoplay`, host, Arcade library |
-| `docs/rrs_format.md` | the `.rrs` archive format |
-| `docs/ENGINE_API_COVERAGE.md` | generated: which exports/ordinals each game uses and what the port covers |
-| `docs/OTHER_GAMES_SURVEY.md` | comparison of the 4 games (binaries, resources, differences) |
-| `docs/WORKPLAN.md`, `docs/CHANGES.md`, `docs/ARCADE_ENGINE_REQUESTS.md` | history of work packages, header changelog, Arcade requests |
+| [docs/README.md](docs/README.md) | architecture, original-to-port map, conventions |
+| [docs/HANDOFF.md](docs/HANDOFF.md) | current status and what is verified |
+| [docs/COMPLETENESS.md](docs/COMPLETENESS.md) | status of every export, ordinal, opcode, resource type and option |
+| [docs/LIMITS.md](docs/LIMITS.md) | known limits and how they were addressed |
+| [docs/REUSE.md](docs/REUSE.md) | how to reuse the engine for a new game |
+| [docs/AUTOPLAY.md](docs/AUTOPLAY.md), [docs/HOST.md](docs/HOST.md), [docs/ARCADE.md](docs/ARCADE.md) | autoplay, host, Arcade library |
+| [docs/rrs_format.md](docs/rrs_format.md), [docs/RAPTURE_INI.md](docs/RAPTURE_INI.md) | the `.rrs` archive format, `rapture.ini` |
+| [docs/ENGINE_API_COVERAGE.md](docs/ENGINE_API_COVERAGE.md) | generated: which exports each game uses and what the port covers |
+| [docs/OTHER_GAMES_SURVEY.md](docs/OTHER_GAMES_SURVEY.md) | comparison of the four games |
+| [docs/WORKPLAN.md](docs/WORKPLAN.md), [docs/CHANGES.md](docs/CHANGES.md) | history of work packages, header changelog |
+| [CLAUDE.md](CLAUDE.md) | working rules for contributors (human or assistant) |
 
 ## How the behaviour was established
 
 The behaviour was derived by studying the binaries of games the author owns, for
-interoperability. That analysis material (disassembly, decompiler output, notes) is not part of
-this repository and is not distributed.
+interoperability. That analysis material is not part of this repository and is not distributed.
 
 ## Third-party components
 
@@ -129,6 +139,6 @@ this repository and is not distributed.
 
 ## License
 
-No license has been chosen yet for the code of this project: until then, all rights are reserved
-by its author (see [LICENSE](LICENSE)). The games, their names and their data belong to their
+All rights reserved by the author: no open-source license has been granted for the code of this
+project (see [LICENSE](LICENSE)). The games, their names and their data belong to their
 respective owners ([NOTICE.md](NOTICE.md)).

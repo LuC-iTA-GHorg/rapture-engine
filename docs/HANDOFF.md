@@ -1,47 +1,27 @@
-# HANDOFF — rapture-engine, status as of 2026-10-19
+# HANDOFF — rapture-engine, status as of 2026-10-20
 
 For picking the work up again on the **engine** (person or assistant). Read `../CLAUDE.md` first, then this file, then `COMPLETENESS.md`.
 
 ## Where we are
 
-- **Repository**: `rapture-engine`, branch `master`. Locally it is the `engine/` submodule of a game repo (a full clone: run `git checkout master` before working).
-  History before 2026-10-19 lives in the game repo (up to `52970c4`).
-- **The engine runs**: the reference game (MuShoot, repo `mushoot-rapture-port`) is playable from the title screen to the credits with `moses`, `aaron`, `arcade` and `host` reimplemented.
-  The other 3 games of the family are not ported yet: Flying Frenzy already has the whole engine API; Flounder Quest is missing a part of it (6 Aaron ordinals; `CDibTile` done in WP-1); Rooftop Ruckus is missing 2 Aaron ordinals.
-- **WP-6 done** (branch `wp6`): `tools/queuemsg_usage.py` measures the QUEUEMSG opcodes used by the 4 games (table in `COMPLETENESS.md`; unused: 6, 11, 12, 101) and `Pkg1_Test` now also covers ANIM (100) and iris X/Y (102..105).
-- **`HostConfig` exists** (`host/HostConfig.h`): no game name in the engine; each game fills in a struct of constants and calls `rapture::HostMain`.
-- **Standalone build**: `engine\tools\build-engine.bat test` builds the `rapture` library + `rapture_tests` without any game and runs the tests that need no game data.
-- **`tools/new-game.ps1`** creates the skeleton of a new game repo **with this repo as a submodule** (tested on 2026-10-19 on a scratch folder with the Flying files: initial commit, `.gitmodules` and pointer correct).
+- **The engine is complete**: `COMPLETENESS.md` reports moses 335 implemented + 9 n.a., Aaron 517 + 38 n.a., QUEUEMSG opcodes 26/26, `.rrs` resource types 11/11 (including writing, with a byte-identical round trip of the 20 archives of the four games), `rapture.ini` options 4/4.
+  Known limits and what was done about them (software MIDI sequencer, EMF renderer, disk-audio verification, `RAPTURE_FORCE_PORTABLE`, SDL virtual-joystick tests): `LIMITS.md`.
+- **All four games run on it** (MuShoot, Flying Frenzy, Flounder Quest, Rooftop Ruckus). Each port is a separate private repository that uses this repository as its `engine/` submodule; they are not distributed and need the user's own original game files.
+- **Repository**: `rapture-engine`, branch `master` (work on `master`, not a detached HEAD, when it is checked out as a submodule).
+- **`HostConfig`** (`host/HostConfig.h`): the engine contains no game name; each game fills in a struct of constants and calls `rapture::HostMain`.
+- **Standalone build**: `tools\build-engine.bat test` builds the `rapture` library + `rapture_tests` without any game and runs the tests that need no game data (`--engine-test 1,3,4,9,10,11`, `--game-test arcade|host`); `portable test` does the same with `RAPTURE_FORCE_PORTABLE=ON`.
+- **Tools**: `tools/new-game.ps1` (skeleton of a new game repository with this one as a submodule), `rrs_extract.py` / `rrs_pack.py`, `engine_coverage.py` (regenerates `ENGINE_API_COVERAGE.md` and the generated block of `COMPLETENESS.md`; needs the original game folders), `audio_disk_check.py`.
+- **Autoplay harness**: `AUTOPLAY.md`.
+- **Scope**: Windows (MinGW-w64) only. Linux and macOS are untested and out of scope.
 
-## What is verified (2026-10-19, full build from the game repo, working directory = game folder)
+## Still needing a human
 
-| test | result |
-|---|---|
-| `--engine-test 1` / `2 .` / `3` / `4` | 140 checks, 0 errors / OK on 5 archives (1934 records, 0 failed) / 279 / 105 |
-| `--game-test arcade` | 233 checks, 0 errors |
-| `--game-test host` | 172 checks, 0 errors |
-| `--game-test mushoot` (in the game repo) | 170 checks, 0 errors |
-| `--autoplay` `hit_hun.txt --fast 4` | exit 0, one hit = +750 points, ammo 8 -> 4 |
-| standalone engine build (`engine\tools\build-engine.bat test`) | OK: Pkg1 140, pkg3 269, Pkg4 34, arcade 233, host 20 (tests without game data skip part of their checks), 0 errors |
-| fresh `git clone --recurse-submodules` of the game repo + `build.bat` (with `engine/` emptied: automatic `git submodule update --init`) | OK, executable built, `--game-test arcade` 233 checks |
+Listening to sounds, voices and MIDI on real speakers and a real synthesiser, a real gamepad, a Windows reference run of the EMF renderer against GDI.
 
-**Not verified**: real audio and MIDI (autoplay uses the `dummy` driver), joystick, CD audio, the 3 games not yet ported, writing `.rrs` archives (does not exist yet).
+## Verified (details in the update sections below and in `LIMITS.md`)
 
-## API coverage (from `engine_coverage.py`)
-
-moses.dll: 344 exports, 268 `implemented`, 7 `missing` (3 are `CDibTile`, 4 are internal constructors/destructors of replaced GDI classes), 60 `unused`, 9 `n.a.`.
-Aaron.dll: 555 ordinals, 180 `implemented`, 8 `missing` (used by Flounder/Ruckus), 341 `unused` (no game imports them), 26 `n.a.`.
-26/26 QUEUEMSG opcodes, 9/11 resource types (type 9 `DIBTILE` missing; type 4 palette is not used by any archive), 0/4 `rapture.ini` options.
-Tables and work packages: **`COMPLETENESS.md`**.
-
-## To do (in order)
-
-1. WP-1 (`CDibTile` + resource type 9) and WP-2 (8 Aaron ordinals 77/138/144/226/234/237/488/576) DONE and merged into master on 2026-10-19. No Flounder archive contains type 9 records (quest.dll uses `CDibTile` in another way: to be checked when Flounder is ported). Tables regenerated: **no gap in the API imported by any of the 4 games** (MuShoot 155, Flying 154, Flounder 162, Ruckus 157 symbols used, 0 missing). `tools/engine_coverage.py` must be run from the game checkout (it looks for the game folders two levels up). Doubts: the class of ordinal 144 is inferred; ordinal 138 is simplified (see `aaron.md` 2.10).
-2. Reverse engineering: **done on 2026-10-19** (repo split). The analysis material (Ghidra project for moses.dll, Aaron.dll and the host `Shoot.exe`, notes, function name tables, generic scripts) is **optional and not part of this repository**; nothing in the build or the tests requires it.
-   Name tables recorded there: 642 rows (moses 99, Aaron 180, Shoot.exe 203, `Shoot.dll` in the Arcade range >= 0x10013de0 160).
-   To improve: `shoot_exe.md` and `shoot_dll_b.md` (analysis notes, not in this repository) still cite some paths of the game repo's analysis output; `aaron_ordinals.tsv` is a hand-made table with 150 rows (the 180 rows of `function_names.tsv` are the source).
-3. Port Flying Frenzy (WP-3) with `new-game.ps1` as a dress rehearsal of the two-repo flow.
-4. The rest of `COMPLETENESS.md` (WP-4..12), up to the editor.
+`--engine-test 1, 2 ., 3, 4, 9, 10, 11`, `--game-test arcade` (233) and `host` (172), the per-game suites, `--rrs-test . --roundtrip` and one autoplay script reaching gameplay per game: all green on the final integration commit, also in the `RAPTURE_FORCE_PORTABLE` build.
+The analysis material used to establish the behaviour is not part of this repository.
 
 ## Practical notes
 
@@ -74,7 +54,7 @@ Next: porting the other games (WP-3, WP-8).
 
 ## Update 2026-10-20 (branch `limits`): the known limits
 
-Branch `limits` of this repository (not pushed, not merged; the game repository still points at `master`). Full account in **`docs/LIMITS.md`**.
+Merged into `master`. Full account in **`docs/LIMITS.md`**.
 
 * **MIDI**: software sequencer (`platform/MidiSeq.*`, `Midi.*`): the delta unit is 1 ms (verified in the moses MIDI thread), live mute (incl. the drum remap 10 -> 16), live tempo with the original arithmetic, loop,
   stop, Pause/Activate = stop + restart from the beginning (as the original). Backends: winmm `midiOutShortMsg` (`Midi_win.cpp`), no-op/logging elsewhere, recording + virtual clock for tests.
@@ -89,7 +69,7 @@ Branch `limits` of this repository (not pushed, not merged; the game repository 
 
 ## Update 2026-10-20 — integration: the four-game family
 
-- **All 4 games are ported** on this engine: MuShoot (`mushoot-rapture-port`, reference game), Flying Frenzy (`flying-frenzy-rapture-port`), Flounder Quest (`flounder-quest-rapture-port`) and Rooftop Ruckus (`rooftop-ruckus-rapture-port`). Each is a private repo with this repo (`engine/`) and `rapture-engine-re` (`engine-re/`) as submodules, all pointing at the same engine commit.
+- **All 4 games are ported** on this engine: MuShoot (the reference game), Flying Frenzy, Flounder Quest and Rooftop Ruckus. Each is a private repo with this repo as its `engine/` submodule, all pointing at the same engine commit.
 - **Engine fixes that came out of each port**:
   - Rooftop Ruckus: `Pkg4` dialog test made robust (focus check before the click, independent of the game's pictures and of the hovered scene below).
   - Flying Frenzy: `Timer::Start` on a running timer no longer registers a second listener.

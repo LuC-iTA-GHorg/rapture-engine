@@ -9,7 +9,7 @@ This folder describes the rewritten engine. The implementations (`.cpp`) were sp
 The game code (`Shoot.exe` / `Shoot.dll`) sits above it and is transcribed 1:1 from the original behaviour.
 
 Reference sources (analysis notes, not part of this repository): `moses.md`, `aaron.md`, `aaron_ordinals.tsv`, `rrs_format.md`, `shoot_exe.md`,
-`shoot_dll_a.md`, `shoot_dll_b.md`. Project rules (as in the Mahjong port): 1:1 logic, **every function
+`shoot_dll_a.md`, `shoot_dll_b.md`. Project rules: 1:1 logic, **every function
 carries the original address in a comment** (`// moses.dll 0x10006e80`, `// Aaron ord 539 0x1000de09`), the original's quirks
 are **preserved** and flagged with a comment, and where the original is unclear there is a `TODO`.
 

@@ -27,7 +27,7 @@ original binaries where the behaviour was observed.
   fonts of the original games.
 - No original program code and no decompiled code of the original executables or libraries.
 - No game logic: the games themselves (scene code, scripts, resources) are not part of this
-  repository; each game has its own port repository that uses this engine as a git submodule
+  repository; each game has its own separate, private port repository that uses this engine as a git submodule
   and needs the user's own copy of the game.
 - No tables or other data copied from the original binaries: the ADPCM tables are computed
   from the published IMA/DVI ADPCM algorithm.
