@@ -2,6 +2,8 @@
 // No window: only software Surfaces, a fake clock (CAnimView::SetTimeSource) and pixel comparisons.
 #include "tests/EngineTests.h"
 
+#include "platform/Config.h"
+
 #include "moses/AnimObjs.h"
 #include "moses/AnimView.h"
 #include "moses/DrawGdi.h"
@@ -693,7 +695,7 @@ void TestText() {
     for (int y = -24; y < 24 && !red; ++y)
         for (int x = -32; x < 32; ++x)
             if (Px(f.view, x, y) == RED) { red = true; break; }
-#ifdef _WIN32
+#ifdef RAPTURE_WIN32
     CHECK(red);
 #else
     (void)red;
@@ -704,7 +706,7 @@ void TestText() {
     for (int y = -24; y < 24 && !green; ++y)
         for (int x = -32; x < 32; ++x)
             if (Px(f.view, x, y) == GREEN) { green = true; break; }
-#ifdef _WIN32
+#ifdef RAPTURE_WIN32
     CHECK(green);
 #else
     (void)green;

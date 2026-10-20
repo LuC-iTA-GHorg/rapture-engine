@@ -12,4 +12,5 @@ int RunMoses5Tests();                    // WP-5: moses completeness (called at 
 int RunPkg10Tests(int argc, char** argv); // limits branch: MIDI sequencer, joystick, portability (tests/Limits_Test.cpp)
 int RunMidiSeqTests();                   // tests/MidiSeq_Test.cpp, returns the number of failures
 int RunEmfTests();                       // tests/Emf_Test.cpp, returns the number of failures
+int RunPortableTests();                  // tests/Portable_Test.cpp, returns the number of failures
 int RunPkg11Tests(int argc, char** argv); // limits branch: SDL `disk` audio capture checks, argv[1] = game folder (tests/AudioDisk_Test.cpp)

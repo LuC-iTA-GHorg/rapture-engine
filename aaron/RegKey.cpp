@@ -1,6 +1,7 @@
 // RegKey: registry replacement backed by an .ini file (format: see RegKey.h). Package 3.
 // Aaron RegKey ord 11/12 (ctors), 247/248/251 (Get*), 620/621/624 (Set*), 172 (DeleteKey), 175 (DeleteValue).
 #include "aaron/RegKey.h"
+#include "platform/Config.h"
 
 #include <cctype>
 #include <cstdio>
@@ -35,10 +36,14 @@ IniStore& store() {
 std::string g_folder = "Aaron", g_file = "aaron.ini";
 
 std::string default_path() {
+#ifdef RAPTURE_WIN32
     const char* appdata = std::getenv("APPDATA");
     if (appdata && *appdata) return std::string(appdata) + "\\" + g_folder + "\\" + g_file;
+#endif
     const char* xdg = std::getenv("XDG_CONFIG_HOME");
     if (xdg && *xdg) return std::string(xdg) + "/" + g_folder + "/" + g_file;
+    const char* home = std::getenv("HOME");
+    if (home && *home) return std::string(home) + "/.config/" + g_folder + "/" + g_file; // XDG default
     return g_file; // fallback: working directory
 }
 

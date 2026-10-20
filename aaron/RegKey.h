@@ -67,7 +67,7 @@ public:
     // ---- ini storage control (port additions) -------------------------------------------------
     static void SetIniPath(const std::string& path); // default: %APPDATA%\<folder>\<file> (see SetDefaultLocation)
     // The game's settings location (HostConfig::settingsFolder / settingsFile): %APPDATA%\<folder>\<file>, on non-Windows
-    // $XDG_CONFIG_HOME/<folder>/<file> (else <file> in the working directory).  Call before the first key is used.
+    // $XDG_CONFIG_HOME/<folder>/<file>, else $HOME/.config/<folder>/<file>, else <file> in the working directory.  Call before the first key is used.
     static void SetDefaultLocation(const char* folder, const char* file);
     static void FlushAll();                          // write the file if dirty
     static void FlushIfDue(unsigned nowMs);          // called by the main loop

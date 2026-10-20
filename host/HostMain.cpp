@@ -5,6 +5,7 @@
 #include "autoplay/Autoplay.h"
 #include "host/HostApp.h"
 #include "moses/DebugOverlay.h"
+#include "platform/Config.h"
 #include "platform/Movie.h"
 #include "platform/Window.h"
 
@@ -23,9 +24,8 @@
 #include <filesystem>
 #include <string>
 
-#ifdef _WIN32
+#ifdef RAPTURE_WIN32
 #include <windows.h>
-#include <io.h>
 // The exe is a GUI-subsystem program; give console tests an output stream.
 static void AttachConsoleOutput() {
     HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);

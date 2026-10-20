@@ -1,6 +1,7 @@
 // Text rendering through the Windows GDI (WORKPLAN pkg1: allowed only in a dedicated *_win.cpp).
 // Font = whatever GDI resolves for LOGFONT_LITE (face/height/weight), NONANTIALIASED like the 16-bit original.
-#ifdef _WIN32
+#include "platform/Config.h"
+#ifdef RAPTURE_WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #undef Rectangle

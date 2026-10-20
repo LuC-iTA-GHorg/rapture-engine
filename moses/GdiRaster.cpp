@@ -1,5 +1,6 @@
 // Software replacement of the GDI primitives used by moses.dll (see GdiRaster.h). Package 1.
 #include "moses/GdiRaster.h"
+#include "platform/Config.h"
 
 #include <algorithm>
 #include <cmath>
@@ -283,8 +284,9 @@ void Polygon(GdiCtx& dc, const POINT* pts, int n) {
 // One interior pixel with the current brush (solid, hatched or pattern), clipped; used by the EMF player for path / region fills.
 void FillPixel(GdiCtx& dc, int x, int y) { FillPix(dc, x, y, ToArgb(dc.brushColor)); }
 
-#ifndef _WIN32
-// Non-Windows text: the portable stb_truetype backend (GdiTextTtf.cpp).  (Windows uses the real GDI, GdiRaster_win.cpp.)
+#ifndef RAPTURE_WIN32
+// Portable text: the stb_truetype backend (GdiTextTtf.cpp), used when RAPTURE_WIN32 is not defined (Linux/macOS, or RAPTURE_FORCE_PORTABLE).
+// (The Windows build uses the real GDI, GdiRaster_win.cpp.)
 int TextRect(const LOGFONT_LITE& f, const char* s, int len, RECT& rc, u32 flags) { return ttf::TextRect(f, s, len, rc, flags); }
 void TextDraw(GdiCtx& dc, const LOGFONT_LITE& f, const char* s, int len, const RECT& rc, u32 flags) { ttf::TextDraw(dc, f, s, len, rc, flags); }
 int TextAscent(const LOGFONT_LITE& f) { return ttf::TextAscent(f); }
