@@ -1,0 +1,12 @@
+build/
+build-engine/
+build.env.bat
+.buildtools.json
+.retools.json
+re.env.bat
+re/projects-rebuilt/
+re/projects/**/*.lock
+re/projects/**/*.lock~
+re/scripts/__pycache__/
+__pycache__/
+*.pyc
