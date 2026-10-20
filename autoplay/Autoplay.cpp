@@ -398,6 +398,15 @@ bool Start(const char* scriptPath, const char* outDir) {
             u.op = O_KEYUP; u.a = k; u.settle = 50; u.line = line;
             g.cmds.push_back(d); g.cmds.push_back(u);
         }
+        else if (w == "keydown" || w == "keyup") { // hold / release a key (a game that moves while the key is down)
+            std::string n;
+            int k = 0;
+            ok = bool(in >> n) && KeyFromName(n, k);
+            c.op = w == "keydown" ? O_KEYDOWN : O_KEYUP;
+            c.a = k;
+            c.settle = 50;
+            g.cmds.push_back(c);
+        }
         else if (w == "shot") { c.op = O_SHOT; ok = bool(in >> c.s); g.cmds.push_back(c); }
         else if (w == "log") { c.op = O_LOG; g.cmds.push_back(c); }
         else if (w == "quit") { c.op = O_QUIT; g.cmds.push_back(c); }

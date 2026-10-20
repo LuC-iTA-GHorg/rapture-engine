@@ -6,7 +6,7 @@
 // level where the platform Window delivers events to aaron (so the game code paths are the real ones). Nothing here is
 // linked into the normal run: without --autoplay no hook is installed and platform::Window behaves as before.
 //
-// The engine knows the generic commands (wait, waitfor dialog|nodialog|scene, move, click, rclick, button, key, shot, log, quit).
+// The engine knows the generic commands (wait, waitfor dialog|nodialog|scene, move, click, rclick, button, key, keydown, keyup, shot, log, quit).
 // Commands that need to look inside a game (enemies, score, ...) are added by the game through an Extension, registered in
 // HostConfig::autoplay.
 #pragma once

@@ -329,6 +329,10 @@ void Broadcaster::RemoveListener(Subscriber* s) {                          // or
 }
 
 void Broadcaster::Broadcast(int code, intptr_t value, Broadcaster* src) {  // ord 141 0x10008243
+    Broadcast2(code, value, reinterpret_cast<intptr_t>(src));
+}
+
+void Broadcaster::Broadcast2(int code, intptr_t a, intptr_t b) {           // ord 141 0x10008243 (the two dwords are opaque)
     // Iterate over a snapshot: a listener may unsubscribe (or delete itself) while being advised.
     std::vector<Subscriber*> snap;
     snap.reserve(size_t(listeners_.Count()));
@@ -338,7 +342,7 @@ void Broadcaster::Broadcast(int code, intptr_t value, Broadcaster* src) {  // or
         for (int i = 0; i < listeners_.Count(); ++i) {
             if (listeners_.At(i) == s) { still = true; break; }
         }
-        if (still) s->OnAdvise(code, value, src);
+        if (still) s->OnAdvise2(code, a, b);
     }
 }
 

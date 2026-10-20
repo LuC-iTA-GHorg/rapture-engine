@@ -47,6 +47,7 @@ One command per line, `#` starts a comment. Coordinates in the **640x480** frame
 | `move x y`, `click x y`, `rclick x y` | mouse |
 | `button <id>` | click the centre of the button with that command in the open dialog |
 | `key <name\|vk>` | `space esc enter f1..f12 up down left right plus minus star a..z 0..9` or a numeric VK |
+| `keydown <name\|vk>`, `keyup <name\|vk>` | hold / release a key (the game sees the key as pressed in between; `key` is press + release) |
 | `shot <name>` | 640x480 PNG in `<outdir>/<name>.png` |
 | `log` | one line on stdout (see below) |
 | `fire hun\|horseman\|hawk [lead_ms] [special]` | click on the first visible enemy, led by `lead_ms` for the measured speed (about 200 ms); `special` = right button (special shot) |

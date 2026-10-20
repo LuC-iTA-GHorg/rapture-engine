@@ -142,6 +142,8 @@ public:
     // was registered with a deleter (AddResource overload) it is deleted - the original always runs the object's virtual destructor.
     u32 AddResource(void* obj, void (*deleter)(void*));
     void FreeDynamicResource(u32 id);
+    void* LoadDynamicResource(u32 id);    // port: slot 0xff ids: refcount + 1 (the original goes through the slot's CResMgr, FUN_1000b6d3)
+    void ReleaseDynamicResource(u32 id);  // ResTable::Release 0x1000bcdd for slot 0xff
     // ---- audio ---------------------------------------------------------------------------------------------
     // Aaron ord 534 0x1000dd15 Scene::PlaySound(resId, a, pan, volume, b, user0, user1) -> sound handle (0 = failed)
     // Compiles a PLAYSOUNDINFO{size=0x18,...}. Call sites: PlaySound(0x1850000,1,0,100,0,0,0) (music) and

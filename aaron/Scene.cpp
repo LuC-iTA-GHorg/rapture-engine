@@ -300,7 +300,7 @@ void* Scene::ResProcThunk(void* data, moses::CDrawObj* obj, int mode, u32* id) {
 void* Scene::OnResProc(moses::CDrawObj* obj, int mode, u32* id) {
     u32 v = *id;
     if (mode == 0) {
-        if (v & kResDirect) res_.Free(v);
+        if (v & kResDirect) FreeResource(v);   // (also the dynamic resources: slot 0xff)
         return nullptr;
     }
     if ((v & kResDirect) == 0) { // "group + index": member `id & 0xffff` of the group stored in the object's resid
@@ -308,7 +308,7 @@ void* Scene::OnResProc(moses::CDrawObj* obj, int mode, u32* id) {
         if (v == kNoRes) return nullptr;
         *id = v;
     }
-    return res_.Load(v);
+    return LoadResource(v);
 }
 
 } // namespace aaron

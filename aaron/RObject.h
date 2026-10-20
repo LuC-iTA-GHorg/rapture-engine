@@ -213,6 +213,10 @@ public:
     virtual ~Subscriber();                     // Aaron ord 61 0x1000829a (removes itself from its broadcaster)
     // Called by Broadcaster::Broadcast(code, value, src). Shoot: `if (code == -1 && ...)`.
     virtual void OnAdvise(int code, intptr_t value, Broadcaster* src) { (void)code; (void)value; (void)src; }
+    // The original Broadcaster::Broadcast(code, a, b) hands TWO opaque dwords to slot 1 of every subscriber (Aaron ord 141 0x10008243).
+    // Most users pass (value, the broadcaster); a game that needs the second dword as data overrides this instead of OnAdvise.
+    // Default: forwards to OnAdvise with `b` reinterpreted as the source pointer.
+    virtual void OnAdvise2(int code, intptr_t a, intptr_t b) { OnAdvise(code, a, reinterpret_cast<Broadcaster*>(b)); }
 
 private:
     // port addition (pkg3): the broadcasters this subscriber is registered with, so that ~Subscriber can unlink itself.
@@ -228,6 +232,8 @@ public:
     void RemoveListener(Subscriber* s);        // Aaron ord 700 0x10008218
     // Calls s->OnAdvise(code, value, src) on every listener. Shoot: Broadcast(-1, value, this).
     void Broadcast(int code, intptr_t value, Broadcaster* src);   // Aaron ord 141 0x10008243
+    // Same function with the second dword as plain data: calls s->OnAdvise2(code, a, b) on every listener.
+    void Broadcast2(int code, intptr_t a, intptr_t b);
     int ListenerCount() const { return listeners_.Count(); }
 
 private:

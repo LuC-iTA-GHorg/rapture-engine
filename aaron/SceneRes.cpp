@@ -59,13 +59,36 @@ void* Scene::DynamicResource(u32 id) const {
     return (id >> 16) == 0xff80 && i < dyn_.size() ? dyn_[i].obj : nullptr;
 }
 
+// The dynamic resources (slot 0xff, ids 0xff80xxxx made by AddResource) live in the same kind of table as the archive resources:
+// Load = FUN_1000b6d3 (-> the entry's object, refcount + 1), Free = ResTable::Release 0x1000bcdd (refcount < 2: the table's Free hook 0x1000b797 deletes the
+// object through its virtual destructor and clears the entry; else refcount - 1).  AddResource gives the entry refcount 1 (the creator's reference).
+void* Scene::LoadDynamicResource(u32 id) {
+    u32 i = id & 0xffff;
+    if (i >= dyn_.size() || !dyn_[i].obj) return nullptr;
+    ++dyn_[i].refcount;
+    return dyn_[i].obj;
+}
+
+void Scene::ReleaseDynamicResource(u32 id) {
+    u32 i = id & 0xffff;
+    if (i >= dyn_.size()) return;
+    if (dyn_[i].refcount < 2) {
+        if (dyn_[i].obj) FreeDynamicResource(id);   // deletes the object (deleter) and clears the entry
+        dyn_[i] = DynEntry{};
+    } else {
+        --dyn_[i].refcount;
+    }
+}
+
 void* Scene::LoadResource(u32 id) { // ord 429 0x1000cfdb
     if (id == kNoRes) return nullptr;
+    if (ResSlot(id) == 0xff) return LoadDynamicResource(id);
     return res_.Load(id);
 }
 
 void Scene::FreeResource(u32 id) { // ord 207 0x1000cd0d
     if (id == kNoRes) return;
+    if (ResSlot(id) == 0xff) { ReleaseDynamicResource(id); return; }
     res_.Free(id);
 }
 
