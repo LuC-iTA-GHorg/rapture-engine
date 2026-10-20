@@ -20,12 +20,14 @@ void Timer::Start(u32 periodMs, u32 userData) {
     }
     if (!scene_) return;
     TimerMgr& mgr = scene_->Timers();
+    const bool wasRunning = running_;
     count_ = 0;
     user_ = userData;
     period_ = periodMs;
     running_ = true;
     done_ = false;
     acc_ = mgr.TotalMs() + periodMs;
+    if (wasRunning) mgr.RemoveListener(this);   // restarting a running timer must not register it twice (~Timer removes only one entry)
     mgr.AddListener(this);
 }
 

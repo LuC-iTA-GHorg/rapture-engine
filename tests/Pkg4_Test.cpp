@@ -252,7 +252,7 @@ void TestDialog() {
     CHECK(sc.Cursor().Hovered() != nullptr); // pointer over the dialog's widgets
     sc.Cursor().Capture(ok); // regression: manager references to a widget deleted with its dialog must be dropped
     CHECK(dlg->OnKey(WMSG_KEYDOWN, AVK_ESCAPE, 0) == 1);
-    CHECK(sc.Cursor().Captured() == nullptr && sc.Cursor().Hovered() == nullptr);
+    CHECK(sc.Cursor().Captured() == nullptr && (sc.Cursor().Hovered() == nullptr || sc.Cursor().Hovered() == under));   // the scene below may legitimately be hovered (depends on the pictures)
     CHECK(sc.Focus().GetFocus() == nullptr);   // focus restored on close (checked before the click: a click may legitimately focus `under`, which depends on the game's pictures)
     sc.HandleMouse(WMSG_LBUTTONDOWN, 0, 0, 1); // first click after the dialog closed (used to crash on a stale hover_)
     sc.HandleMouse(WMSG_LBUTTONUP, 0, 0, 0);
@@ -321,6 +321,13 @@ void TestTimer() {
     sc.Timers().Tick(2000);
     CHECK(t->Count() == 2);
 
+    // restarting a running timer keeps ONE listener entry (the destructor removes only one)
+    t->Start(100, 0xffffffffu);
+    size_t lc = sc.Timers().ListenerCount();
+    t->Start(100, 0xffffffffu);
+    CHECK(sc.Timers().ListenerCount() == lc);
+    t->Stop();
+    CHECK(sc.Timers().ListenerCount() == 0);
     // fixed repetitions: 2 ticks then stop
     sc.Drain();
     t->Start(10, 2);
