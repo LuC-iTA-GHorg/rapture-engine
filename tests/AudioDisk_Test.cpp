@@ -249,9 +249,17 @@ void TestArchiveWaves(const std::string& dir) {
         CHECK(st.first != SIZE_MAX);
         const double expectFrames = double(p.Frames()) * kOutRate / double(p.rate);
         const double got = double(st.last - st.first + 1);
-        // audible length within 2% (+ a few frames) of the source length converted to the device rate; trailing/leading zero
-        // samples of the wave itself are inside the tolerance because the source is only picked when its peak is large
-        CHECK(got <= expectFrames + 8 && got >= expectFrames * 0.90);
+        // the audible span of the source (first..last non-zero frame): some game waves carry long silent padding
+        // (e.g. Flounder sebfx.rrs#2: 2.3 s with ~0.3 s of sound), so the expected audible length is measured, not assumed
+        size_t srcFirst = SIZE_MAX, srcLast = 0;
+        for (size_t f = 0; f < p.Frames(); ++f) {
+            bool nz = false;
+            for (int c = 0; c < p.channels; ++c) if (p.samples[f * p.channels + c]) nz = true;
+            if (nz) { if (srcFirst == SIZE_MAX) srcFirst = f; srcLast = f; }
+        }
+        const double expectAudible = srcFirst == SIZE_MAX ? 0.0 : double(srcLast - srcFirst + 1) * kOutRate / double(p.rate);
+        // audible length within 10% (+ a few frames) of the audible source span converted to the device rate
+        CHECK(got <= expectAudible + 8 && got >= expectAudible * 0.90);
         CHECK(cap.Frames() >= size_t(expectFrames));
         // the mixer is linear: the capture peak equals the source peak (unity gain, centre pan) within the interpolation error
         int srcPeak = SourcePeak(p);
@@ -270,7 +278,7 @@ void TestArchiveWaves(const std::string& dir) {
             CHECK(exact);
         }
         std::printf("    captured %zu frames, audible %zu..%zu (%.0f of %.0f expected), peak %d (source %d), rms %.0f, wall %.2f s\n",
-                    cap.Frames(), st.first, st.last, got, expectFrames, st.peak, srcPeak, st.rms, wall);
+                    cap.Frames(), st.first, st.last, got, expectAudible, st.peak, srcPeak, st.rms, wall);
         std::remove(kCapture);
     }
 }

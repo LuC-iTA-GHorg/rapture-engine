@@ -86,3 +86,14 @@ Branch `limits` of this repository (not pushed, not merged; the game repository 
 * New tests: `--engine-test 10` (MIDI sequencer 160+, EMF 86, joystick 58, platform 2/5) and `--engine-test 11` (disk audio, 58 checks with the game folder). `--engine-test 3` now has 562 checks (+13, virtual joystick chain). Everything else unchanged:
   `1` 223 + Moses5 156, `2 .` OK on 5 archives (1934 records), `4` 176, `9` 63, `--game-test arcade` 233 / `host` 172 / `mushoot` 145, `--rrs-test . --roundtrip` OK. Same results in the `RAPTURE_FORCE_PORTABLE` build.
 * **Needs the user**: listening to sounds/voices/MIDI on real speakers and a real synthesiser, a real gamepad, a real Linux/macOS build (WSL or a Linux box), a Windows reference run of the EMF renderer against GDI.
+
+## Update 2026-10-20 — integration: the four-game family
+
+- **All 4 games are ported** on this engine: MuShoot (`mushoot-rapture-port`, reference game), Flying Frenzy (`flying-frenzy-rapture-port`), Flounder Quest (`flounder-quest-rapture-port`) and Rooftop Ruckus (`rooftop-ruckus-rapture-port`). Each is a private repo with this repo (`engine/`) and `rapture-engine-re` (`engine-re/`) as submodules, all pointing at the same engine commit.
+- **Engine fixes that came out of each port**:
+  - Rooftop Ruckus: `Pkg4` dialog test made robust (focus check before the click, independent of the game's pictures and of the hovered scene below).
+  - Flying Frenzy: `Timer::Start` on a running timer no longer registers a second listener.
+  - Flounder Quest: `Broadcast2` / `OnAdvise2`; refcounted dynamic resources (slot 0xff, Aaron ordinal 138); `Timer::OnHideChange` (ordinal 515); autoplay `keydown` / `keyup` commands.
+  - Integration pass (Flounder): `--engine-test 11` measured the audible length against the whole wave; Flounder `sebfx.rrs#2` is 2.3 s with long silent padding, so the expected length is now the audible span of the source (test-only change).
+- **Verification on the final commit** (each game, build from clean, working directory = game folder): `--engine-test 1/2 ./3/4/9/10/11 .`, `--game-test arcade` 233, `host` 172, per-game suite (MuShoot 145, Flying 220, Flounder 59, Ruckus 189), `--rrs-test . --roundtrip`, and one autoplay script reaching gameplay: all green.
+- **Scope**: Linux and macOS are out of scope for the user (the portable build exists and is tested only on Windows/MinGW). Still needing the user: real audio/MIDI on speakers, a real gamepad.
