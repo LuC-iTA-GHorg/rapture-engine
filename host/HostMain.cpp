@@ -77,7 +77,8 @@ int HostMain(int argc, char** argv, const HostConfig& cfg) {
             else if (n == 4) rc = RunPkg4Tests(argc, argv);
             else if (n == 9) rc = RunPkg9Tests(argc, argv);
             else if (n == 10) rc = RunPkg10Tests(argc, argv);
-            else std::printf("--engine-test: unknown package '%s' (1..4, 9, 10)\n", argv[i + 1]);
+            else if (n == 11) rc = RunPkg11Tests(argc - i - 1, argv + i + 1);
+            else std::printf("--engine-test: unknown package '%s' (1..4, 9, 10, 11)\n", argv[i + 1]);
             std::fflush(stdout);
             return rc;
         }

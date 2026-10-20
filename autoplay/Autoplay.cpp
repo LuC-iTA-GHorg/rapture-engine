@@ -418,7 +418,13 @@ bool Start(const char* scriptPath, const char* outDir) {
     std::fflush(stdout);
     ::Window::SetScriptedMode(true);
     ::Window::SetScriptHook(&Hook);
-    SDL_setenv("SDL_AUDIODRIVER", "dummy", 1); // silent: a verification run must not play sound on the user's PC
+    // Silent by default: a verification run must not play sound on the user's PC.  Only the SDL `disk` driver (audio written to a
+    // file, SDL_DISKAUDIOFILE) may be chosen from the environment: it makes the real mixer/device path testable without speakers
+    // (docs/AUTOPLAY.md, "Real audio without speakers").  Use --fast 1 then: --fast scales the mixer position.
+    {
+        const char* drv = SDL_getenv("SDL_AUDIODRIVER");
+        if (!(drv && std::strcmp(drv, "disk") == 0)) SDL_setenv("SDL_AUDIODRIVER", "dummy", 1);
+    }
     return true;
 }
 

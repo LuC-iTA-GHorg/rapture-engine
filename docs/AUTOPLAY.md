@@ -90,3 +90,26 @@ Then read the PNGs in `$o`. For the exit code: `-PassThru` and `.ExitCode`. Avoi
 - Only the 640x480 logical window: no test of fullscreen, scaling, DPI, real mouse.
 - With a high `--fast`, behaviour that depends on samples (aim, chance) differs from `--fast 1`.
 - Dialogs are driven by button id or coordinates; widgets without an id must be clicked with `click`.
+
+## Real audio without speakers (SDL `disk` driver)
+`--autoplay` forces the SDL `dummy` audio driver, which only keeps the timing. To check the **real** audio path (SDL device, audio thread,
+`Audio::Mix`, the sound-end notifications driven by the mixer) without anything coming out of the speakers, select the SDL `disk` driver:
+it writes the PCM that would go to the device into a file (raw signed 16 bit little endian, stereo, 22050 Hz: exactly what `Audio::Open`
+asks for).
+
+| Variable | Meaning |
+|---|---|
+| `SDL_AUDIODRIVER=disk` | use the disk driver. `--autoplay` keeps it if it is already set (any other value is replaced by `dummy`); the headless tests set it themselves |
+| `SDL_DISKAUDIOFILE=capture.raw` | output file (default `sdlaudio.raw` in the current folder) |
+| `SDL_DISKAUDIODELAY` | **do not set it**: SDL 2.32 on Windows returns the environment strings through one shared buffer and the driver reads the delay after the file name, so the output file ends up NAMED AFTER THE DELAY (a file called `1`). Without it the driver paces the writes like a real device (46 ms per 1024-frame buffer), so a capture takes as long as the game ran |
+
+* **Test**: `<game>.exe --engine-test 11 [GAME_FOLDER]` (cwd = game folder): plays a synthetic 440 Hz tone, a hard-panned stereo buffer and the
+  waves of `musfx.rrs` / `mus.rrs` (read at run time, nothing is stored) through the real device and through `CAudioLib::SoundPlay` + `Service`, and checks on the
+  captured file that it is not silent, the audible length equals the source length at 22050 Hz (+-1 frame), the peak equals the source peak,
+  the end notification arrived, and that a 22050 Hz mono source comes out **sample-exact** (L == R == source) after the buffer-aligned start.
+  Without the archives only the synthetic part runs (SKIP is printed).
+* **Whole game**: `python -I engine/tools/audio_disk_check.py build/<game>.exe <game folder> src/tools/autoplay/hit_hun.txt` runs the test above and then
+  the script with the disk driver at `--fast 1` (`--fast N` scales the mixer position, so the capture would be N times too short) and reports length,
+  peak and rms of the capture. Reference run (hit_hun.txt): 34.1 s captured, audible from frame 1036, peak 32768 (clipping while the sounds overlap), rms ~4000.
+* Playing a capture back (`ffplay -f s16le -ar 22050 -ac 2 capture.raw`, Audacity "Import raw data") is the way to **listen** to a run later.
+* MIDI is not part of the capture (it goes to the MIDI sink, see `docs/MIDI.md`): in the headless tests the recording sink checks the events.
