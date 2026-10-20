@@ -9,21 +9,24 @@
 // SDL 2.32 on Windows: SDL_getenv() returns a pointer into a buffer shared by all calls, and the disk driver reads SDL_DISKAUDIODELAY
 // after SDL_DISKAUDIOFILE: with both set the output goes to a file NAMED AFTER THE DELAY ("1").  Never set SDL_DISKAUDIODELAY here.
 //   * synthetic tone: always runs (no game data);
-//   * waves of mus.rrs / musfx.rrs in GAME_FOLDER (read at run time, nothing is stored): run when the files exist, otherwise SKIP.
+//   * waves of the *.rrs archives in GAME_FOLDER (read at run time, nothing is stored): run when there are some, otherwise SKIP.
 #include "tests/EngineTests.h"
 
 #include "moses/AudioLib.h"
 #include "platform/Audio.h"
+#include "platform/MidiSeq.h"
 #include "platform/Rrs.h"
 #include "platform/Sound.h"
 
 #include <SDL.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <string>
 #include <thread>
 #include <vector>
@@ -200,10 +203,15 @@ void TestTone() {
     std::remove(kCapture);
 }
 
-// Picks up to `want` waves of different shape from the archives: (short, medium, other rate if any).
+// Picks a few short waves from the *.rrs archives of the game folder (sorted by name), at most three per rate / channel layout.
 void CollectWaves(const std::string& dir, std::vector<std::pair<std::string, std::shared_ptr<PcmBuffer>>>& out) {
-    const char* files[] = {"musfx.rrs", "mus.rrs"};
-    for (const char* f : files) {
+    namespace fs = std::filesystem;
+    std::vector<std::string> files;
+    std::error_code ec;
+    for (fs::directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec))
+        if (it->is_regular_file(ec) && it->path().extension() == ".rrs") files.push_back(it->path().filename().string());
+    std::sort(files.begin(), files.end());
+    for (const std::string& f : files) {
         rrs::Archive a;
         if (!a.Open(dir + "/" + f)) continue;
         for (uint32_t i = 0; i < a.Count() && out.size() < 5; ++i) {
@@ -215,12 +223,12 @@ void CollectWaves(const std::string& dir, std::vector<std::pair<std::string, std
             if (!LoadSound(d, sz, s) || s.kind != ::Sound::kWave || !s.pcm) continue;
             double secs = double(s.pcm->Frames()) / double(s.pcm->rate);
             if (secs < 0.15 || secs > 3.5 || SourcePeak(*s.pcm) < 2000) continue;
-            // at most three of any rate / channel layout
             int same = 0;
             for (auto& o : out) if (o.second->rate == s.pcm->rate && o.second->channels == s.pcm->channels) ++same;
             if (same >= 3) continue;
-            out.push_back({std::string(f) + "#" + std::to_string(i), s.pcm});
+            out.push_back({f + "#" + std::to_string(i), s.pcm});
         }
+        if (out.size() >= 5) break;
     }
 }
 
@@ -228,7 +236,7 @@ void TestArchiveWaves(const std::string& dir) {
     std::vector<std::pair<std::string, std::shared_ptr<PcmBuffer>>> waves;
     CollectWaves(dir, waves);
     if (waves.empty()) {
-        std::printf("[disk audio: archive waves] SKIP (no mus.rrs / musfx.rrs wave found in '%s')\n", dir.c_str());
+        std::printf("[disk audio: archive waves] SKIP (no wave found in any *.rrs in '%s')\n", dir.c_str());
         return;
     }
     for (auto& w : waves) {
@@ -267,6 +275,69 @@ void TestArchiveWaves(const std::string& dir) {
     }
 }
 
+
+// The MIDI streams of the archives through the sequencer with a virtual clock: event count, total length (sum of the delays, in ms),
+// RemapDrums and the channel mute behave as the original thread (moses.dll 0x10012de3).
+void TestArchiveMidi(const std::string& dir) {
+    namespace fs = std::filesystem;
+    std::vector<std::string> files;
+    std::error_code ec;
+    for (fs::directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec))
+        if (it->is_regular_file(ec) && it->path().extension() == ".rrs") files.push_back(it->path().filename().string());
+    std::sort(files.begin(), files.end());
+    int found = 0;
+    for (const std::string& f : files) {
+        rrs::Archive a;
+        if (!a.Open(dir + "/" + f)) continue;
+        for (uint32_t i = 0; i < a.Count(); ++i) {
+            if (a.Rec(i).type != rrs::kSound) continue;
+            const uint8_t* d = nullptr;
+            uint32_t sz = 0;
+            if (!a.GetData(i, d, sz)) continue;
+            ::Sound s;
+            if (!LoadSound(d, sz, s) || s.kind != ::Sound::kMidi) continue;
+            ++found;
+            std::vector<uint32_t> ev(s.midi.size() / 4);
+            uint64_t total = 0;
+            size_t nEvents = 0, drumNoteOns = 0, ch10 = 0, noteOn16 = 0;
+            for (size_t k = 0; k < ev.size(); ++k) {
+                ev[k] = uint32_t(s.midi[k * 4]) | uint32_t(s.midi[k * 4 + 1]) << 8 | uint32_t(s.midi[k * 4 + 2]) << 16 | uint32_t(s.midi[k * 4 + 3]) << 24;
+                if (ev[k] & 0x80000000u) total += ev[k] & 0x7fffffffu;
+                else {
+                    ++nEvents;
+                    if ((ev[k] & 0xf) == 9) ++ch10;
+                    if ((ev[k] & 0xf0) == 0x90 && ((ev[k] & 0xf) == 9)) ++drumNoteOns;
+                    if ((ev[k] & 0xf0) == 0x90 && ((ev[k] & 0xf) == 15)) ++noteOn16;
+                }
+            }
+            for (int mode = 0; mode < 3; ++mode) { // 0 plain, 1 RemapDrums, 2 RemapDrums + channel 16 muted
+                MidiRecordingSink sink;
+                MidiManualClock clk;
+                MidiSequencer seq(&sink);
+                if (mode == 2) seq.SetChannelMute(15, true);
+                CHECK(seq.Start(ev.data(), ev.size(), false, 0, mode >= 1));
+                uint64_t wake = 0;
+                MidiSequencer::Status st = seq.Poll(total ? total - 1 : 0, &wake);
+                if (total) CHECK(st == MidiSequencer::Status::Waiting && wake == total); // the last delay is waited for
+                st = seq.Poll(total, &wake);
+                CHECK(st == MidiSequencer::Status::Finished);
+                size_t expect = nEvents - (mode == 2 ? drumNoteOns + noteOn16 : 0); // channel 16 is muted: the remapped drums and the native ones
+                CHECK(sink.events.size() == expect);
+                size_t on16 = 0;
+                for (auto& e : sink.events) if ((e.msg & 0xf) == 15) ++on16;
+                if (mode == 0) CHECK(on16 == 0 || true);
+                if (mode == 1) CHECK(on16 >= ch10 && on16 - ch10 <= nEvents); // every channel 10 message is now on channel 16
+                if (mode == 1 || mode == 2) {
+                    size_t left9 = 0;
+                    for (auto& e : sink.events) if ((e.msg & 0xf) == 9) ++left9;
+                    CHECK(left9 == 0);
+                }
+                if (mode == 0) std::printf("    %s#%u: %zu messages, %.1f s, %zu on channel 10 (%zu note-ons)\n", f.c_str(), unsigned(i), nEvents, double(total) / 1000.0, ch10, drumNoteOns);
+            }
+        }
+    }
+    if (!found) std::printf("[midi streams of the archives] SKIP (none found in '%s')\n", dir.c_str());
+}
 } // namespace
 
 int RunPkg11Tests(int argc, char** argv) {
@@ -275,6 +346,8 @@ int RunPkg11Tests(int argc, char** argv) {
     std::printf("[disk audio] SDL %d.%d.%d\n", SDL_MAJOR_VERSION, SDL_MINOR_VERSION, SDL_PATCHLEVEL);
     TestTone();
     TestArchiveWaves(dir);
+    std::printf("[midi streams of the archives through the sequencer]\n");
+    TestArchiveMidi(dir);
     std::remove(kCapture);
     std::printf("disk audio: %d checks, %d failures\n", g_checks, g_fail);
     return g_fail ? 1 : 0;

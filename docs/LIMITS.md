@@ -32,6 +32,8 @@ Verified in the decompiled `CMidiPlayer::thread_proc` (0x10012de3), `SetTempo` (
   SMF temp file are gone; `CompactMidiToSmf` stays as a tool/test helper.
 * `CAudioLib::MidiSetChannel / MidiSetTempo / MidiBreakLoops` are live now; `CAudioLib::Midi()` gives tests access to the player.
 
+Real data (`--engine-test 11 GAME_FOLDER`, read at run time): the only MIDI stream of the reference game (596 messages, ~70.2 s with the 1 ms unit, i.e. a plausible length, all on channel 16 so `RemapDrums` changes nothing for it) runs through the sequencer with the expected event count, length and mute behaviour.
+
 ### Tests (`tests/MidiSeq_Test.cpp`, 160+ checks)
 ordering/timing/catch-up, live mute (incl. velocity-0 note-on, `% 16`, persistence), RemapDrums + mute order, tempo (half/double, truncation, live change mid-wait, 32 bit wrap),
 loop + BreakLoops, stop, restart, empty/zero-delay loops, hold, `MidiPlayer` with a virtual clock, one real-time worker thread test (order, never early, length), and `CAudioLib`
@@ -45,7 +47,7 @@ on top (notifications, priority, Pause/Activate restart, loop). Everything deter
 ## 2. Real audio without speakers (`tests/AudioDisk_Test.cpp`, `tools/audio_disk_check.py`, `AUTOPLAY.md` last section)
 
 SDL's `disk` audio driver writes the PCM that would reach the device to a file. `--engine-test 11 [GAME_FOLDER]` selects it (`SDL_AUDIODRIVER=disk`, `SDL_DISKAUDIOFILE`), plays a synthetic
-tone, a hard-panned stereo buffer and the waves of `musfx.rrs` / `mus.rrs` (read at run time) through the real mixer, also via `CAudioLib::SoundPlay` + `Service`, and checks the captured
+tone, a hard-panned stereo buffer and the waves of the `*.rrs` archives of the game folder (read at run time) through the real mixer, also via `CAudioLib::SoundPlay` + `Service`, and checks the captured
 file: not silent, audible length equals the source length at 22050 Hz (+-1 frame), peak equals the source peak, the end notification came from the real mixer, and a 22050 Hz mono source
 is **sample-exact**. `--autoplay` now keeps `SDL_AUDIODRIVER=disk` if it is set (it forces `dummy` otherwise), so `tools/audio_disk_check.py ... hit_hun.txt` captures a whole game session
 (reference: 34.1 s, peak 32768 = clipping while sounds overlap, rms ~4000).
@@ -103,4 +105,4 @@ that SDL does not expose as a joystick.
 
 ## Not changed on purpose
 * The WinMM/MCI fidelity of the game logic and the public API: `MidiPlayer::Play` takes the compact stream instead of an SMF image (its only caller was `CAudioLib`); everything else is additive (`CHANGES.md`).
-* No game data in the repository: the disk-audio and archive tests read `mus.rrs`/`musfx.rrs` from the game folder at run time and store nothing.
+* No game data in the repository: the disk-audio and archive tests read the `*.rrs` archives from the game folder at run time and store nothing.

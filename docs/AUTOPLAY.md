@@ -104,7 +104,7 @@ asks for).
 | `SDL_DISKAUDIODELAY` | **do not set it**: SDL 2.32 on Windows returns the environment strings through one shared buffer and the driver reads the delay after the file name, so the output file ends up NAMED AFTER THE DELAY (a file called `1`). Without it the driver paces the writes like a real device (46 ms per 1024-frame buffer), so a capture takes as long as the game ran |
 
 * **Test**: `<game>.exe --engine-test 11 [GAME_FOLDER]` (cwd = game folder): plays a synthetic 440 Hz tone, a hard-panned stereo buffer and the
-  waves of `musfx.rrs` / `mus.rrs` (read at run time, nothing is stored) through the real device and through `CAudioLib::SoundPlay` + `Service`, and checks on the
+  waves of the `*.rrs` archives of the game folder (read at run time, nothing is stored) through the real device and through `CAudioLib::SoundPlay` + `Service`, and checks on the
   captured file that it is not silent, the audible length equals the source length at 22050 Hz (+-1 frame), the peak equals the source peak,
   the end notification arrived, and that a 22050 Hz mono source comes out **sample-exact** (L == R == source) after the buffer-aligned start.
   Without the archives only the synthetic part runs (SKIP is printed).
