@@ -54,7 +54,7 @@ HFONT MakeFont(const LOGFONT_LITE& f) {
     lf.lfUnderline = f.underline;
     lf.lfCharSet = DEFAULT_CHARSET;
     lf.lfQuality = NONANTIALIASED_QUALITY;
-    std::strncpy(lf.lfFaceName, f.face, sizeof lf.lfFaceName - 1);
+    std::memcpy(lf.lfFaceName, f.face, strnlen(f.face, sizeof lf.lfFaceName - 1)); // lf is zeroed: stays terminated
     return CreateFontIndirectA(&lf);
 }
 } // namespace

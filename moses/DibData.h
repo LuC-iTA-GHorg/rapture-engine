@@ -96,6 +96,7 @@ public:
     explicit CDibData(const ::Dib& dib);
     // moses.dll 0x10003b00 CDibData(CDibData*): shares the pixels.
     CDibData(const CDibData& other);
+    CDibData& operator=(const CDibData&) = default;      // member-wise, as moses.dll does in Read()
     ~CDibData() override;                                // moses.dll 0x10003ac0
 
     void DibBlt(CDibData* dst, int x, int y, RECT& src, u16 flip, DROP rop) override; // moses.dll 0x10003b50

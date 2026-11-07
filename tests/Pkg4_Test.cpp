@@ -323,7 +323,7 @@ void TestTimer() {
 
     // restarting a running timer keeps ONE listener entry (the destructor removes only one)
     t->Start(100, 0xffffffffu);
-    size_t lc = sc.Timers().ListenerCount();
+    int lc = sc.Timers().ListenerCount();
     t->Start(100, 0xffffffffu);
     CHECK(sc.Timers().ListenerCount() == lc);
     t->Stop();

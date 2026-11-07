@@ -82,6 +82,7 @@ public:
     int Get(int i);                                        // 0x1001c547
     CProperty* GetAt(int i);                               // 0x1001c5e5
     int IndexOf(CProperty* p);                             // 0x1001c626  -1 if absent
+    using aaron::PtrArray::Reset;                          // keep Reset() visible next to Reset(int)
     void Reset(int i);                                     // 0x1001c6de
     int AddValue(int i, int delta);                        // 0x1001c768 (named "Set" in the notes: calls prop->Add)
     int SetValue(int i, int value);                        // 0x1001c807 (named "AddValue" in the notes: calls prop->Set)
