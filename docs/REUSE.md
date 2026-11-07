@@ -159,7 +159,7 @@ For a new game the reduced path is: **0 survey (done) -> 1 Ghidra (2 binaries: e
 
 ## 4. Bootstrap with `engine/tools/new-game.ps1` and `re/game.cfg`
 
-> **Two-repository layout (19/10/2026, adopted).** The engine is the `rapture-engine` repo, a git submodule `engine/` of one repo per game (a private `<game>-rapture-port` repo): this is option A of §5, with one repo per game.
+> **Two-repository layout (19/10/2026, adopted).** The engine is the `rapture-engine` repo, a git submodule `engine/` of the repos of each game: a private `<game>-rapture-dev` repo (the game code, used by `new-game.ps1`) and a public `<game>-rapture-port` repo (README, NOTICE, build script only: no game code; the game is meant to be produced at build time by a static recompiler from the user's own game DLL, work in progress). This is option A of §5, with one repo per game.
 > Clone: `git clone --recurse-submodules`; `build.bat` runs `git submodule update --init` by itself if `engine/` is empty. The reverse-engineering workspace (Ghidra projects, analysis notes and decompiled output)
 > is maintained outside this repository; each game keeps its own only for what is specific to it (scene DLL, `Launcher.exe`, optionally the host exe if a comparison is wanted).
 

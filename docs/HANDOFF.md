@@ -6,7 +6,7 @@ For picking the work up again on the **engine** (person or assistant). Read `../
 
 - **The engine is complete**: `COMPLETENESS.md` reports moses 335 implemented + 9 n.a., Aaron 517 + 38 n.a., QUEUEMSG opcodes 26/26, `.rrs` resource types 11/11 (including writing, with a byte-identical round trip of the 20 archives of the four games), `rapture.ini` options 4/4.
   Known limits and what was done about them (software MIDI sequencer, EMF renderer, disk-audio verification, `RAPTURE_FORCE_PORTABLE`, SDL virtual-joystick tests): `LIMITS.md`.
-- **All four games run on it** (MuShoot, Flying Frenzy, Flounder Quest, Rooftop Ruckus). Each port is a separate private repository that uses this repository as its `engine/` submodule; they are not distributed and need the user's own original game files.
+- **All four games run on it** (MuShoot, Flying Frenzy, Flounder Quest, Rooftop Ruckus). Each game has a private `<game>-rapture-dev` repository (game code, not distributed) and a public `<game>-rapture-port` repository (build script and documents only; the game will be produced at build time by a static recompiler from the user's own game DLL, work in progress), both with this repository as their `engine/` submodule; playing always needs the user's own original game files.
 - **Repository**: `rapture-engine`, branch `master` (work on `master`, not a detached HEAD, when it is checked out as a submodule).
 - **`HostConfig`** (`host/HostConfig.h`): the engine contains no game name; each game fills in a struct of constants and calls `rapture::HostMain`.
 - **Standalone build**: `tools\build-engine.bat test` builds the `rapture` library + `rapture_tests` without any game and runs the tests that need no game data (`--engine-test 1,3,4,9,10,11`, `--game-test arcade|host`); `portable test` does the same with `RAPTURE_FORCE_PORTABLE=ON`.
@@ -69,7 +69,7 @@ Merged into `master`. Full account in **`docs/LIMITS.md`**.
 
 ## Update 2026-10-20 — integration: the four-game family
 
-- **All 4 games are ported** on this engine: MuShoot (the reference game), Flying Frenzy, Flounder Quest and Rooftop Ruckus. Each is a private repo with this repo as its `engine/` submodule, all pointing at the same engine commit.
+- **All 4 games are ported** on this engine: MuShoot (the reference game), Flying Frenzy, Flounder Quest and Rooftop Ruckus. Each is a private `<game>-rapture-dev` repo with this repo as its `engine/` submodule, all pointing at the same engine commit; the public `<game>-rapture-port` repos contain no game code yet.
 - **Engine fixes that came out of each port**:
   - Rooftop Ruckus: `Pkg4` dialog test made robust (focus check before the click, independent of the game's pictures and of the hovered scene below).
   - Flying Frenzy: `Timer::Start` on a running timer no longer registers a second listener.

@@ -3,7 +3,9 @@
 Shared engine of the Disney *Hot Shots* games built on Rapture Technologies' `moses.dll` +
 `Aaron.dll` (identical in MuShoot, Flying Frenzy, Flounder Quest and Rooftop Ruckus). Overview:
 `README.md`; status: `docs/HANDOFF.md`; plan to make it complete: `docs/COMPLETENESS.md`. This
-repository is the `engine/` submodule of one (private) repository per game.
+repository is the `engine/` submodule of two repositories per game: a private
+`<game>-rapture-dev` (game code, analysis material) and a public `<game>-rapture-port` (build
+script and documents only).
 
 ## Project rules
 - **Portable tools**, no system-wide installs. **No Visual Studio**: MinGW-w64 + CMake + SDL2.

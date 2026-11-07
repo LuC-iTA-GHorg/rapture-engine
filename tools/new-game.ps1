@@ -1,5 +1,6 @@
 # Bootstraps the analysis / port of ANOTHER game of the Disney Rapture-engine family (same Moses/Aaron engine).
-# Playbook: docs/REUSE.md.   Architecture: one engine repo (rapture-engine, this folder when it is a submodule) + one repo per game.
+# Playbook: docs/REUSE.md.   Architecture: one engine repo (rapture-engine, this folder when it is a submodule) + per game a private
+# <game>-rapture-dev repo (what this script creates) and a public <game>-rapture-port repo (README/NOTICE/build.bat only, made by hand).
 #
 #   .\engine\tools\new-game.ps1 -GameDir "<games>\Flying" -Name flying [-Title "Flying Frenzy"]
 #                               [-EngineUrl <git url of rapture-engine>] [-CopyEngine] [-NoEngineRe] [-NoCommit] [-Force] [-DryRun]

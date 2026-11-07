@@ -24,9 +24,12 @@ headless tests. Per-item status: [docs/COMPLETENESS.md](docs/COMPLETENESS.md); k
 [docs/LIMITS.md](docs/LIMITS.md).
 
 The four games run on it: Disney's MuShoot, Flying Frenzy, Flounder Quest and Rooftop Ruckus.
-Each game port is a separate, **private** repository that uses this one as a git submodule and
-contains only that game's own code; those ports are not distributed, and running one requires the
-original game files from your own copy. This repository is the shared part, and is useful on its
+Each game has two repositories that use this one as a git submodule (`engine/`): a **private**
+`<game>-rapture-dev` repository with that game's own code and the maintainers' analysis material
+(not distributed), and a **public** `<game>-rapture-port` repository with only a build script and
+documents. The public ports are meant to produce the game at build time on the user's computer,
+with a static recompiler that translates the user's own game DLL to C (work in progress). Running
+a game always requires the original game files from your own copy. This repository is the shared part, and is useful on its
 own as a library, a test suite and documentation of the engine and of the `.rrs` format.
 
 Platform: developed and tested on **Windows** only (MinGW-w64). A `RAPTURE_FORCE_PORTABLE` build
